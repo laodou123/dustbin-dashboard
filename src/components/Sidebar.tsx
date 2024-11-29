@@ -1,21 +1,15 @@
 import React from "react";
-import { FaTrash, FaHome, FaInfoCircle } from "react-icons/fa";
-import "../styles/Sidebar.css";
+import "../styles/Sidebar.css"; // Make sure the import path is correct
 
-const Sidebar: React.FC = () => {
+const Sidebar = () => {
   return (
     <div className="sidebar">
-      <h2>Dustbin Dashboard</h2>
-      <ul>
-        <li>
-          <FaHome /> Home
-        </li>
-        <li>
-          <FaTrash /> Dustbins
-        </li>
-        <li>
-          <FaInfoCircle /> About
-        </li>
+      <h2 className="sidebar-logo">Bin-e</h2>
+      <ul className="sidebar-menu">
+        <li className="menu-item active">Overview</li>
+        <li className="menu-item">Logistics</li>
+        <li className="menu-item">Marketing</li>
+        <li className="menu-item">Settings</li>
       </ul>
     </div>
   );
