@@ -1,0 +1,27 @@
+.sidebar {
+    background-color: #333; /* Dark background for the sidebar */
+    color: #fff; /* White text color */
+    width: 250px; /* Fixed width for the sidebar */
+    height: 100vh; /* Full height */
+    padding: 20px;
+    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1); /* Shadow for separation */
+  }
+  
+  .sidebar ul {
+    list-style-type: none; /* Remove bullet points */
+    padding: 0;
+  }
+  
+  .sidebar ul li {
+    margin: 15px 0;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: background-color 0.3s ease;
+  }
+  
+  .sidebar ul li:hover {
+    background-color: #444;
+  }
+  

@@ -1,0 +1,6 @@
+.dashboard {
+    flex: 1; /* Fill the remaining space in the layout */
+    padding: 20px;
+    background-color: #f9f9f9;
+  }
+  
