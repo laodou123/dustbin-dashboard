@@ -1,11 +1,12 @@
 import React from "react";
 import "../styles/Dashboard.css"; // Make sure the import path is correct
+import ChartComponent from "./ChartComponent";
 
 const Dashboard = () => {
   return (
     <div className="dashboard">
       <div className="card">
-        <h3>Bin-e</h3>
+        <h3>Smart Recycling Bin</h3>
         <div className="stats">
           <p>
             Other: <strong>3851 pcs</strong>
@@ -47,6 +48,25 @@ const Dashboard = () => {
           </p>
         </div>
       </div>
+      <div className="card">
+        <h3>Smart Recycling Bin</h3>
+        <div className="stats">
+          <p>
+            Other: <strong>3851 pcs</strong>
+          </p>
+          <p>
+            Lightbulb: <strong>3791 pcs</strong>
+          </p>
+        </div>
+      </div>
+
+      <div className="card">
+        <h3>Smart Recycling Bin</h3>
+        <div className="stats">
+          <ChartComponent />
+        </div>
+      </div>
+
     </div>
   );
 };

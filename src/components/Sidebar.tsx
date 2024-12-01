@@ -1,15 +1,31 @@
 import React from "react";
+import { Link, useLocation } from "react-router-dom";
 import "../styles/Sidebar.css"; // Make sure the import path is correct
 
-const Sidebar = () => {
+const Sidebar: React.FC = () => {
+  const location = useLocation();
+
+  const menuItems = [
+    { name: "Overview", path: "/" },
+    { name: "Logistics", path: "/logistics" },
+    { name: "Marketing", path: "/marketing" },
+    { name: "Settings", path: "/settings" },
+  ];
+
   return (
     <div className="sidebar">
-      <h2 className="sidebar-logo">Bin-e</h2>
+      <h2 className="sidebar-logo">SRB</h2>
       <ul className="sidebar-menu">
-        <li className="menu-item active">Overview</li>
-        <li className="menu-item">Logistics</li>
-        <li className="menu-item">Marketing</li>
-        <li className="menu-item">Settings</li>
+        {menuItems.map((item) => (
+          <li
+            key={item.name}
+            className={`menu-item ${
+              location.pathname === item.path ? "active" : ""
+            }`}
+          >
+            <Link to={item.path}>{item.name}</Link>
+          </li>
+        ))}
       </ul>
     </div>
   );
