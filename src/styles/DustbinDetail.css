@@ -1,0 +1,30 @@
+.message-log {
+    margin-top: 20px;
+    background-color: #f9f9f9;
+    padding: 15px;
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    text-align: left;
+    max-width: 600px;
+    margin: 0 auto;
+  }
+  
+  .message-log h2 {
+    font-size: 18px;
+    margin-bottom: 10px;
+  }
+  
+  .message-log ul {
+    list-style-type: none;
+    padding: 0;
+  }
+  
+  .message-log li {
+    background-color: #fff;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    padding: 10px;
+    margin-bottom: 5px;
+    font-size: 14px;
+  }
+  

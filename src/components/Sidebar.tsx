@@ -7,7 +7,7 @@ const Sidebar: React.FC = () => {
 
   const menuItems = [
     { name: "Overview", path: "/" },
-    { name: "Logistics", path: "/logistics" },
+    { name: "DustbinHome", path: "/DustbinHome" },
     { name: "Marketing", path: "/marketing" },
     { name: "Settings", path: "/settings" },
   ];
