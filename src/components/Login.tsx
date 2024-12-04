@@ -1,5 +1,9 @@
 import React, { useState } from "react";
-import { signInWithEmailAndPassword } from "firebase/auth";
+import {
+  signInWithEmailAndPassword,
+  setPersistence,
+  browserLocalPersistence,
+} from "firebase/auth";
 import { auth } from "../firebase";
 import { useNavigate, Link } from "react-router-dom";
 import {
@@ -23,6 +27,8 @@ const Login: React.FC = () => {
     e.preventDefault();
     setError(null);
     try {
+      await setPersistence(auth, browserLocalPersistence);
+      await signInWithEmailAndPassword(auth, email, password);
       await signInWithEmailAndPassword(auth, email, password);
       alert("Login Successful");
       navigate("/dashboard");
