@@ -66,7 +66,6 @@ const Dashboard = () => {
           <ChartComponent />
         </div>
       </div>
-
     </div>
   );
 };

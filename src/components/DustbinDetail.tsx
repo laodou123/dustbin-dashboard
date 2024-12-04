@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import mqtt, { MqttClient } from "mqtt";
 import "../styles/DustbinDetail.css";
+import LoadingPage from "./LoadingPage";
 
 const DustbinDetail: React.FC = () => {
   const { binType } = useParams<{ binType: string }>();
@@ -77,6 +78,10 @@ const DustbinDetail: React.FC = () => {
       client.end();
     };
   }, [binType]);
+
+  if (!isConnected) {
+    return <LoadingPage />;
+  }
 
   return (
     <div className="dustbin-detail">

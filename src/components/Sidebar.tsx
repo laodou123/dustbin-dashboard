@@ -1,33 +1,74 @@
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
-import "../styles/Sidebar.css"; // Make sure the import path is correct
+import {
+  Drawer,
+  List,
+  ListItem,
+  ListItemButton,
+  ListItemIcon,
+  ListItemText,
+  Typography,
+  Box,
+} from "@mui/material";
+import { Dashboard, Home, Settings, Campaign } from "@mui/icons-material";
 
 const Sidebar: React.FC = () => {
   const location = useLocation();
 
+  // Menu items with icons
   const menuItems = [
-    { name: "Overview", path: "/" },
-    { name: "DustbinHome", path: "/DustbinHome" },
-    { name: "Marketing", path: "/marketing" },
-    { name: "Settings", path: "/settings" },
+    { name: "Overview", path: "/dashboard", icon: <Dashboard /> },
+    { name: "DustbinHome", path: "/DustbinHome", icon: <Home /> },
+    { name: "Marketing", path: "/marketing", icon: <Campaign /> },
+    { name: "Settings", path: "/settings", icon: <Settings /> },
   ];
 
   return (
-    <div className="sidebar">
-      <h2 className="sidebar-logo">SRB</h2>
-      <ul className="sidebar-menu">
+    <Drawer
+      variant="permanent"
+      sx={{
+        width: 240,
+        flexShrink: 0,
+        "& .MuiDrawer-paper": {
+          width: 240,
+          boxSizing: "border-box",
+          backgroundColor: "#1a202c",
+          color: "#fff",
+        },
+      }}
+    >
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          height: 64,
+          borderBottom: "1px solid #4a5568",
+        }}
+      >
+        <Typography variant="h6" noWrap>
+          SRB
+        </Typography>
+      </Box>
+      <List>
         {menuItems.map((item) => (
-          <li
+          <ListItem
             key={item.name}
-            className={`menu-item ${
-              location.pathname === item.path ? "active" : ""
-            }`}
+            disablePadding
+            sx={{
+              backgroundColor:
+                location.pathname === item.path ? "#2d3748" : "inherit",
+              "&:hover": { backgroundColor: "#4a5568" },
+            }}
           >
-            <Link to={item.path}>{item.name}</Link>
-          </li>
+            <ListItemButton component={Link} to={item.path}>
+              <ListItemIcon sx={{ color: "#fff" }}>{item.icon}</ListItemIcon>
+              <ListItemText primary={item.name} />
+            </ListItemButton>
+          </ListItem>
         ))}
-      </ul>
-    </div>
+      </List>
+    </Drawer>
   );
 };
 

@@ -13,7 +13,15 @@ import {
 import useFirebaseChartData from "../useFirebaseChartData";
 
 // Register Chart.js components
-ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend
+);
 
 const ChartComponent: React.FC = () => {
   const { chartData, loading } = useFirebaseChartData("sensorData"); // Replace "chartData" with your Firebase path
