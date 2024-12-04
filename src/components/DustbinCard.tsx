@@ -1,6 +1,12 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import "../styles/DustbinCard.css";
+import {
+  Card,
+  CardMedia,
+  CardContent,
+  Typography,
+  CardActionArea,
+} from "@mui/material";
 
 interface DustbinCardProps {
   title: string;
@@ -15,14 +21,42 @@ const DustbinCard: React.FC<DustbinCardProps> = ({ title, imageSrc }) => {
   };
 
   return (
-    <div
-      className="dustbin-card"
-      onClick={handleClick}
-      style={{ cursor: "pointer" }}
+    <Card
+      sx={{
+        maxWidth: 345,
+        borderRadius: 3,
+        boxShadow: 4,
+        transition: "transform 0.3s, box-shadow 0.3s",
+        "&:hover": {
+          transform: "scale(1.05)",
+          boxShadow: 6,
+        },
+      }}
     >
-      <img src={imageSrc} alt={title} className="dustbin-image" />
-      <h3 className="dustbin-title">{title}</h3>
-    </div>
+      <CardActionArea onClick={handleClick}>
+        <CardMedia
+          component="img"
+          height="180"
+          image={imageSrc}
+          alt={`${title} image`}
+          sx={{
+            objectFit: "cover",
+          }}
+        />
+        <CardContent>
+          <Typography
+            variant="h6"
+            align="center"
+            sx={{
+              fontWeight: "bold",
+              color: "#333",
+            }}
+          >
+            {title}
+          </Typography>
+        </CardContent>
+      </CardActionArea>
+    </Card>
   );
 };
 

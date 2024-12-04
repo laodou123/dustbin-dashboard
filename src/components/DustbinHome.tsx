@@ -1,5 +1,12 @@
 import React from "react";
-import "../styles/DustbinHome.css";
+import {
+  Grid,
+  Typography,
+  Container,
+  AppBar,
+  Toolbar,
+  Box,
+} from "@mui/material";
 import DustbinCard from "./DustbinCard";
 import testImage from "../images/test.jpeg";
 
@@ -9,18 +16,40 @@ const DustbinHome: React.FC = () => {
     { title: "Paper", imageSrc: testImage },
     { title: "Metal", imageSrc: testImage },
     { title: "Children's", imageSrc: testImage },
-    { title: "Children's", imageSrc: testImage },
   ];
 
   return (
-    <div className="dustbin-home">
-      <h2>My Devices</h2>
-      <div className="dustbin-grid">
-        {bins.map((bin, index) => (
-          <DustbinCard key={index} title={bin.title} imageSrc={bin.imageSrc} />
-        ))}
-      </div>
-    </div>
+    <>
+      {/* Main Container */}
+      <Container>
+        <Box sx={{ marginY: 4 }}>
+          <Typography
+            variant="h4"
+            align="center"
+            gutterBottom
+            sx={{ fontWeight: "bold", color: "#333" }}
+          >
+            My Devices
+          </Typography>
+          <Typography
+            variant="subtitle1"
+            align="center"
+            sx={{ marginBottom: 4, color: "#666" }}
+          >
+            Select a bin to view its details and live updates.
+          </Typography>
+        </Box>
+
+        {/* Grid Layout for Dustbin Cards */}
+        <Grid container spacing={4}>
+          {bins.map((bin, index) => (
+            <Grid item xs={12} sm={6} md={4} key={index}>
+              <DustbinCard title={bin.title} imageSrc={bin.imageSrc} />
+            </Grid>
+          ))}
+        </Grid>
+      </Container>
+    </>
   );
 };
 
