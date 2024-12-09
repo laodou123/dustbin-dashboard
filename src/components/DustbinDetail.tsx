@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import mqtt, { MqttClient } from "mqtt";
+import mqtt, { MqttClient, IClientOptions } from "mqtt";
 import "../styles/DustbinDetail.css";
 import LoadingPage from "./LoadingPage";
 
@@ -14,10 +14,15 @@ const DustbinDetail: React.FC = () => {
   });
   const [isConnected, setIsConnected] = useState(false);
   const [messageLog, setMessageLog] = useState<string[]>([]);
-
-  const brokerUrl = "wss://test.mosquitto.org:8081"; // Secure WebSocket URL
   const topic = binType ? `dustbin/${binType.toLowerCase()}/data` : "";
-
+  const options: IClientOptions = {
+    protocol: "wss",
+    host: "82d0b298bf0c4c38aec3e46bed030a55.s1.eu.hivemq.cloud",
+    port: 8884,
+    path: "/mqtt",
+    username: "dllmhgc",
+    password: "@Dllm12345",
+  };
   const details: Record<string, string> = {
     plastic: "This is a plastic bin used for recycling plastic waste.",
     paper: "This bin is used for paper recycling.",
@@ -35,7 +40,7 @@ const DustbinDetail: React.FC = () => {
       return;
     }
 
-    const client: MqttClient = mqtt.connect(brokerUrl);
+    const client: MqttClient = mqtt.connect(options);
 
     client.on("connect", () => {
       console.log("Connected to MQTT broker");
@@ -95,7 +100,7 @@ const DustbinDetail: React.FC = () => {
       <div className="mqtt-info">
         <h3>MQTT Connection Info</h3>
         <p>Status: {isConnected ? "Connected" : "Disconnected"}</p>
-        <p>Broker: {brokerUrl}</p>
+        <p>Broker: {options.host}</p>
         <p>Topic: {topic}</p>
       </div>
 
