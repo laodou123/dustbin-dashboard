@@ -94,9 +94,6 @@ const DustbinDetail: React.FC = () => {
 
       <div className="mqtt-info">
         <h3>MQTT Connection Info</h3>
-        <h1 className="text-3xl font-bold text-center text-blue-500">
-          Hello Tailwind CSS!
-        </h1>
         <p>Status: {isConnected ? "Connected" : "Disconnected"}</p>
         <p>Broker: {brokerUrl}</p>
         <p>Topic: {topic}</p>
