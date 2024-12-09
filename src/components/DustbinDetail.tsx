@@ -127,7 +127,24 @@ const DustbinDetail: React.FC = () => {
           ? `${binType.charAt(0).toUpperCase() + binType.slice(1)} Bin`
           : "Error"}
       </h1>
-
+      <p className="text-center lead">{binDetail}</p>
+      <div className="card mb-4 shadow-sm">
+        <div className="card-body">
+          <h3 className="card-title">MQTT Connection Info</h3>
+          <p>
+            Status:{" "}
+            <span className="fw-bold">
+              {isConnected ? "Connected" : "Disconnected"}
+            </span>
+          </p>
+          <p>
+            Broker: <span className="text-muted">{options.host}</span>
+          </p>
+          <p>
+            Topic: <span className="text-muted">{topic}</span>
+          </p>
+        </div>
+      </div>
       <div className="card mb-4 shadow-sm">
         <div className="card-body text-center">
           <h2 className="card-title mb-3">Live Sensor Data</h2>
