@@ -6,6 +6,7 @@ import DustbinDetail from "./components/DustbinDetail";
 import Register from "./components/Register";
 import Login from "./components/Login";
 import UserProfile from "./components/UserProfile";
+import SensorData from "./components/SensorData";
 import PrivateRoute from "./components/PrivateRoute";
 import ProtectedRoute from "./components/ProtectedRoute"; // Adjust the path
 import AppLayout from "./components/AppLayout";
@@ -42,7 +43,7 @@ const App: React.FC = () => {
         <div style={{ flex: 1, padding: "20px" }}>
           <Routes>
             <Route element={<AppLayout />}>
-              <Route path="/" element={<Login />} />
+              <Route path="/" element={<SensorData />} />
               <Route path="/register" element={<Register />} />
               <Route
                 path="/dashboard"
