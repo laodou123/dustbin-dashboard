@@ -1,19 +1,26 @@
 import React, { useEffect, useState, useRef } from "react";
 import { useParams } from "react-router-dom";
 import mqtt, { MqttClient, IClientOptions } from "mqtt";
-import LoadingPage from "./LoadingPage";
 import { ref, onValue } from "firebase/database";
 import { database } from "../firebase";
+import LoadingPage from "./LoadingPage";
 import "bootstrap/dist/css/bootstrap.min.css";
+
+interface SensorData {
+  cover: string;
+  volumn: number;
+  weight: number;
+}
 
 const DustbinDetail: React.FC = () => {
   const { binType } = useParams<{ binType: string }>();
 
-  const [sensorData, setSensorData] = useState({
+  const [sensorData, setSensorData] = useState<SensorData>({
     cover: "open",
     volumn: 0,
     weight: 0,
   });
+
   const [isConnected, setIsConnected] = useState(false);
   const clientRef = useRef<MqttClient | null>(null);
   const [messageLog, setMessageLog] = useState<string[]>([]);
@@ -27,7 +34,6 @@ const DustbinDetail: React.FC = () => {
     username: "dllmhgc",
     password: "@Dllm12345",
   };
-
   const details: Record<string, string> = {
     plastic: "This is a plastic bin used for recycling plastic waste.",
     paper: "This bin is used for paper recycling.",
@@ -35,15 +41,39 @@ const DustbinDetail: React.FC = () => {
     children: "This is a child-specific bin with safety features.",
   };
 
+  const handleButtonClick = (action: string) => {
+    if (clientRef.current && binType) {
+      const message = { cover: action };
+      clientRef.current.publish(topic, JSON.stringify(message));
+      console.log(`Published action message: ${JSON.stringify(message)}`);
+    }
+  };
+
   const binDetail = binType
     ? details[binType.toLowerCase()] || "No details available."
     : "Dustbin type is not specified.";
-
   useEffect(() => {
     if (!binType) {
       console.warn("Bin type is not specified.");
       return;
     }
+
+    // Fetch latest sensor data from Firebase
+    const binRef = ref(database, "sensorData");
+    let latestData: { cover: any; volumn: any; weight: any };
+    const unsubscribe = onValue(binRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const keys = Object.keys(data);
+        const newestKey = keys[keys.length - 1];
+        latestData = data[newestKey];
+        setSensorData({
+          cover: latestData.cover || "close",
+          volumn: latestData.volumn || 0,
+          weight: latestData.weight || 0,
+        });
+      }
+    });
 
     // MQTT Connection
     const client: MqttClient = mqtt.connect(options);
@@ -58,10 +88,6 @@ const DustbinDetail: React.FC = () => {
           console.error("Subscription error:", err);
         }
       });
-
-      const message = `Connected to topic ${topic}`;
-      client.publish(topic, JSON.stringify({ message }));
-      console.log(`Published: ${message}`);
     });
 
     client.on("message", (topic, message) => {
@@ -72,8 +98,8 @@ const DustbinDetail: React.FC = () => {
         const data = JSON.parse(receivedMessage);
         setSensorData({
           cover: data.cover || "close",
-          volumn: data.volumn || 0,
-          weight: data.weight || 0,
+          volumn: latestData.volumn || 0,
+          weight: latestData.weight || 0,
         });
       } catch (error) {
         console.error("Error parsing MQTT message:", error);
@@ -84,32 +110,11 @@ const DustbinDetail: React.FC = () => {
       setIsConnected(false);
     });
 
-    // Firebase Realtime Data Fetch
-    const binRef = ref(database, `${binType.toLowerCase()}`);
-    const unsubscribe = onValue(binRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data) {
-        setSensorData({
-          cover: data.cover || "close",
-          volumn: data.volumn || 0,
-          weight: data.weight || 0,
-        });
-      }
-    });
-
     return () => {
       client.end();
       unsubscribe();
     };
   }, [binType]);
-
-  const handleButtonClick = (action: string) => {
-    if (clientRef.current && binType) {
-      const message = { cover: action };
-      clientRef.current.publish(topic, JSON.stringify(message));
-      console.log(`Published action message: ${JSON.stringify(message)}`);
-    }
-  };
 
   if (!isConnected) {
     return <LoadingPage />;
@@ -122,25 +127,6 @@ const DustbinDetail: React.FC = () => {
           ? `${binType.charAt(0).toUpperCase() + binType.slice(1)} Bin`
           : "Error"}
       </h1>
-      <p className="text-center lead">{binDetail}</p>
-
-      <div className="card mb-4 shadow-sm">
-        <div className="card-body">
-          <h3 className="card-title">MQTT Connection Info</h3>
-          <p>
-            Status:{" "}
-            <span className="fw-bold">
-              {isConnected ? "Connected" : "Disconnected"}
-            </span>
-          </p>
-          <p>
-            Broker: <span className="text-muted">{options.host}</span>
-          </p>
-          <p>
-            Topic: <span className="text-muted">{topic}</span>
-          </p>
-        </div>
-      </div>
 
       <div className="card mb-4 shadow-sm">
         <div className="card-body text-center">
@@ -154,45 +140,44 @@ const DustbinDetail: React.FC = () => {
           <p className="fs-5 mb-3">
             Weight: <span className="fw-bold">{sensorData.weight}</span>
           </p>
-
-          <div className="d-flex flex-wrap justify-content-center gap-2">
-            <button
-              className="btn btn-success"
-              onClick={() => handleButtonClick("open")}
-            >
-              Open Bin
-            </button>
-            <button
-              className="btn btn-danger"
-              onClick={() => handleButtonClick("close")}
-            >
-              Close Bin
-            </button>
-            <button
-              className="btn btn-warning"
-              onClick={() => handleButtonClick("up")}
-            >
-              Up Bin
-            </button>
-            <button
-              className="btn btn-info"
-              onClick={() => handleButtonClick("down")}
-            >
-              Down Bin
-            </button>
-            <button
-              className="btn btn-secondary"
-              onClick={() => handleButtonClick("lock")}
-            >
-              Lock Bin
-            </button>
-            <button
-              className="btn btn-primary"
-              onClick={() => handleButtonClick("unlock")}
-            >
-              Unlock Bin
-            </button>
-          </div>
+        </div>
+        <div className="d-flex flex-wrap justify-content-center gap-2">
+          <button
+            className="btn btn-success"
+            onClick={() => handleButtonClick("open")}
+          >
+            Open Bin
+          </button>
+          <button
+            className="btn btn-danger"
+            onClick={() => handleButtonClick("close")}
+          >
+            Close Bin
+          </button>
+          <button
+            className="btn btn-warning"
+            onClick={() => handleButtonClick("up")}
+          >
+            Up Bin
+          </button>
+          <button
+            className="btn btn-info"
+            onClick={() => handleButtonClick("down")}
+          >
+            Down Bin
+          </button>
+          <button
+            className="btn btn-secondary"
+            onClick={() => handleButtonClick("lock")}
+          >
+            Lock Bin
+          </button>
+          <button
+            className="btn btn-primary"
+            onClick={() => handleButtonClick("unlock")}
+          >
+            Unlock Bin
+          </button>
         </div>
       </div>
 

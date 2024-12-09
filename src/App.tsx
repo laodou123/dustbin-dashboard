@@ -43,7 +43,7 @@ const App: React.FC = () => {
         <div style={{ flex: 1, padding: "20px" }}>
           <Routes>
             <Route element={<AppLayout />}>
-              <Route path="/" element={<SensorData />} />
+              <Route path="/" element={<Login />} />
               <Route path="/register" element={<Register />} />
               <Route
                 path="/dashboard"
