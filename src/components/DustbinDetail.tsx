@@ -38,7 +38,7 @@ const DustbinDetail: React.FC = () => {
     plastic: "This is a plastic bin used for recycling plastic waste.",
     paper: "This bin is used for paper recycling.",
     metal: "Use this bin for metal waste recycling.",
-    children: "This is a child-specific bin with safety features.",
+    generalwaste: "This bin is for general waste",
   };
 
   const handleButtonClick = (action: string) => {

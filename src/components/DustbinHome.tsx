@@ -9,13 +9,16 @@ import {
 } from "@mui/material";
 import DustbinCard from "./DustbinCard";
 import testImage from "../images/test.jpeg";
-
+import generalwasteImage from "../images/generalwaste.jpg";
+import metalImage from "../images/metal.png";
+import paperImage from "../images/paper.png";
+import plasticImage from "../images/plastic.png";
 const DustbinHome: React.FC = () => {
   const bins = [
-    { title: "Plastic", imageSrc: testImage },
-    { title: "Paper", imageSrc: testImage },
-    { title: "Metal", imageSrc: testImage },
-    { title: "Children's", imageSrc: testImage },
+    { title: "Plastic", imageSrc: plasticImage },
+    { title: "Paper", imageSrc: paperImage },
+    { title: "Metal", imageSrc: metalImage },
+    { title: "Generalwaste", imageSrc: generalwasteImage },
   ];
 
   return (

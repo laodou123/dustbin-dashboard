@@ -1,11 +1,10 @@
 import React from "react";
-import { useNavigate } from "react-router-dom";
 import {
   Card,
+  CardActionArea,
   CardMedia,
   CardContent,
   Typography,
-  CardActionArea,
 } from "@mui/material";
 
 interface DustbinCardProps {
@@ -14,44 +13,20 @@ interface DustbinCardProps {
 }
 
 const DustbinCard: React.FC<DustbinCardProps> = ({ title, imageSrc }) => {
-  const navigate = useNavigate();
-
-  const handleClick = () => {
-    navigate(`/details/${title.toLowerCase()}`);
-  };
-
   return (
     <Card
-      sx={{
-        maxWidth: 345,
-        borderRadius: 3,
-        boxShadow: 4,
-        transition: "transform 0.3s, box-shadow 0.3s",
-        "&:hover": {
-          transform: "scale(1.05)",
-          boxShadow: 6,
-        },
-      }}
+      elevation={3}
+      sx={{ height: "100%", display: "flex", flexDirection: "column" }}
     >
-      <CardActionArea onClick={handleClick}>
+      <CardActionArea sx={{ flex: 1 }}>
         <CardMedia
           component="img"
-          height="180"
           image={imageSrc}
-          alt={`${title} image`}
-          sx={{
-            objectFit: "cover",
-          }}
+          alt={title}
+          sx={{ height: 240, objectFit: "contain", backgroundColor: "#f5f5f5" }}
         />
         <CardContent>
-          <Typography
-            variant="h6"
-            align="center"
-            sx={{
-              fontWeight: "bold",
-              color: "#333",
-            }}
-          >
+          <Typography variant="h6" align="center" sx={{ fontWeight: "bold" }}>
             {title}
           </Typography>
         </CardContent>
