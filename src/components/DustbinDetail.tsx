@@ -24,11 +24,11 @@ const DustbinDetail: React.FC = () => {
   const [isConnected, setIsConnected] = useState(false);
   const clientRef = useRef<MqttClient | null>(null);
   const [messageLog, setMessageLog] = useState<string[]>([]);
-  const topic = binType ? `dustbin/${binType.toLowerCase()}/data` : "";
+  const topic = binType ? `srb/${binType.toLowerCase()}/motor` : "";
 
   const options: IClientOptions = {
     protocol: "wss",
-    host: "82d0b298bf0c4c38aec3e46bed030a55.s1.eu.hivemq.cloud",
+    host: "21be7b7891f540b79302d07822b51558.s1.eu.hivemq.cloud",
     port: 8884,
     path: "/mqtt",
     username: "dllmhgc",

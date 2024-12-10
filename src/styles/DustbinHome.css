@@ -1,0 +1,28 @@
+/* DustbinHome.css */
+
+/* Main container margin */
+.dustbin-home-container {
+    margin-top: 2rem;
+    margin-bottom: 2rem;
+  }
+  
+  /* Title styling */
+  .dustbin-home-title {
+    font-weight: bold;
+    color: #333;
+    text-align: center;
+    margin-bottom: 1rem;
+  }
+  
+  /* Subtitle styling */
+  .dustbin-home-subtitle {
+    color: #666;
+    text-align: center;
+    margin-bottom: 2rem;
+  }
+  
+  /* Grid layout for dustbin cards */
+  .dustbin-grid {
+    gap: 1.5rem;
+  }
+  

@@ -5,6 +5,7 @@ import DustbinHome from "./components/DustbinHome";
 import DustbinDetail from "./components/DustbinDetail";
 import Register from "./components/Register";
 import Login from "./components/Login";
+import "bootstrap/dist/css/bootstrap.min.css";
 import UserProfile from "./components/UserProfile";
 import SensorData from "./components/SensorData";
 import PrivateRoute from "./components/PrivateRoute";
