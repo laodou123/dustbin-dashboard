@@ -9,11 +9,13 @@ import "bootstrap/dist/css/bootstrap.min.css";
 import UserProfile from "./components/UserProfile";
 import SensorData from "./components/SensorData";
 import PrivateRoute from "./components/PrivateRoute";
-import ProtectedRoute from "./components/ProtectedRoute"; // Adjust the path
+import ProtectedRoute from "./components/ProtectedRoute";
 import AppLayout from "./components/AppLayout";
 import { User } from "firebase/auth";
-import { auth } from "./firebase"; // Ensure this points to your Firebase configuration file
+import { auth } from "./firebase";
 import { onAuthStateChanged } from "firebase/auth";
+import NotificationComponent from "./components/NotificationComponent"; // Import NotificationComponent
+
 const Overview = () => <Dashboard />;
 const Dustbin = () => <DustbinHome />;
 const Marketing = () => <h1>Marketing Page</h1>;
@@ -30,16 +32,18 @@ const App: React.FC = () => {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
-      setLoading(false); // Stop loading state
+      setLoading(false);
     });
-    return () => unsubscribe(); // Cleanup on unmount
+    return () => unsubscribe();
   }, []);
 
   if (loading) {
-    return <div>Loading...</div>; // Show a loading spinner while checking auth state
+    return <div>Loading...</div>;
   }
+
   return (
     <Router>
+      <NotificationComponent /> {/* Include Notification Component */}
       <div style={{ display: "flex" }}>
         <div style={{ flex: 1, padding: "20px" }}>
           <Routes>
