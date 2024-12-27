@@ -12,7 +12,7 @@ import {
 } from "chart.js";
 import useFirebaseChartData from "../useFirebaseChartData";
 
-// Register Chart.js components
+// Register necessary Chart.js components
 ChartJS.register(
   CategoryScale,
   LinearScale,
@@ -24,37 +24,73 @@ ChartJS.register(
 );
 
 const ChartComponent: React.FC = () => {
-  const { chartData, loading } = useFirebaseChartData("sensorData"); // Replace "chartData" with your Firebase path
+  const { chartData, loading } = useFirebaseChartData("sensorData");
 
   if (loading) return <p>Loading...</p>;
 
-  const data = {
-    labels: chartData.labels, // X-axis labels
+  // Destructure chart data
+  const { labels, values } = chartData;
+
+  // Prepare chart data
+  const chartDataConfig = {
+    labels,
     datasets: [
       {
         label: "Weight",
-        data: chartData.values, // Y-axis values
+        data: values,
         borderColor: "rgba(75, 192, 192, 1)",
         backgroundColor: "rgba(75, 192, 192, 0.2)",
-        tension: 0.4,
+        tension: 0.4, // Smooth line
+        borderWidth: 2,
+        pointRadius: 4, // Add points for better readability
       },
     ],
   };
 
-  const options = {
+  // Chart options
+  const chartOptions: any = {
     responsive: true,
+    maintainAspectRatio: false, // Allow dynamic resizing
     plugins: {
       legend: {
-        position: "top" as const,
+        position: "top", // Position of the legend
       },
       title: {
         display: true,
         text: "Chart from Firebase Data",
       },
     },
+    scales: {
+      x: {
+        ticks: {
+          maxRotation: 45,
+          minRotation: 0,
+          callback: function (
+            value: number | string,
+            index: number,
+            ticks: any
+          ) {
+            const label = labels[index] as string;
+            return label.length > 10 ? `${label.slice(0, 10)}...` : label; // Truncate long labels
+          },
+        },
+      },
+      y: {
+        beginAtZero: true,
+        ticks: {
+          callback: function (value: number) {
+            return value.toLocaleString(); // Format numbers with commas
+          },
+        },
+      },
+    },
   };
 
-  return <Line data={data} options={options} />;
+  return (
+    <div style={{ height: "400px", width: "100%" }}>
+      <Line data={chartDataConfig} options={chartOptions} />
+    </div>
+  );
 };
 
 export default ChartComponent;

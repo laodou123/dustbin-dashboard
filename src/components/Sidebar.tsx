@@ -1,9 +1,8 @@
 import React, { useState } from "react";
-import { NavLink, useLocation } from "react-router-dom";
+import { NavLink } from "react-router-dom";
 import { FaTachometerAlt, FaHome, FaCog, FaBars } from "react-icons/fa";
 
 const Sidebar: React.FC = () => {
-  const location = useLocation();
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   // Menu items with icons
@@ -22,12 +21,14 @@ const Sidebar: React.FC = () => {
     <div className="d-flex">
       {/* Sidebar */}
       <div
-        className={`d-flex flex-column position-fixed top-0 start-0 vh-100 bg-dark text-white ${
+        className={`d-flex flex-column position-fixed top-0 start-0 bg-dark text-white ${
           isCollapsed ? "collapsed" : ""
         }`}
         style={{
           width: isCollapsed ? "80px" : "240px",
+          height: "100vh", // Full height of the viewport
           transition: "width 0.3s ease",
+          overflowY: "auto", // Prevent overflow issues
           zIndex: 1000,
         }}
       >
