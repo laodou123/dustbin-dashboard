@@ -1,0 +1,11 @@
+/* AppLayout.css */
+
+.app-layout {
+    display: flex;
+  }
+  
+  .content {
+    flex: 1;
+    padding: 20px;
+  }
+  

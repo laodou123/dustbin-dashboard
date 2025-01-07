@@ -4,6 +4,9 @@ import mqtt, { MqttClient, IClientOptions } from "mqtt";
 import { ref, onValue } from "firebase/database";
 import { database } from "../firebase";
 import LoadingPage from "./LoadingPage";
+import { styled, Switch, FormControlLabel } from "@mui/material";
+import WbSunnyIcon from "@mui/icons-material/WbSunny"; // Day icon
+import NightlightRoundIcon from "@mui/icons-material/NightlightRound"; // Night icon
 import "bootstrap/dist/css/bootstrap.min.css";
 
 interface SensorData {
@@ -11,6 +14,53 @@ interface SensorData {
   volumn: number;
   weight: number;
 }
+
+const CustomSwitch = styled(Switch)(({ theme }) => ({
+  width: 62,
+  height: 34,
+  padding: 7,
+  "& .MuiSwitch-switchBase": {
+    margin: 1,
+    padding: 0,
+    transform: "translateX(6px)",
+    "&.Mui-checked": {
+      color: "#fff",
+      transform: "translateX(22px)",
+      "& .MuiSwitch-thumb:before": {
+        content: '""',
+        position: "absolute",
+        width: "100%",
+        height: "100%",
+        left: 0,
+        top: 0,
+        backgroundImage: `url('data:image/svg+xml;charset=utf-8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="white"><path d="M10 0a10 10 0 100 20 10 10 0 000-20z"/></svg>')`,
+      },
+      "& + .MuiSwitch-track": {
+        opacity: 1,
+        backgroundColor: theme.palette.mode === "dark" ? "#8796A5" : "#65C466",
+      },
+    },
+  },
+  "& .MuiSwitch-thumb": {
+    backgroundColor: theme.palette.mode === "dark" ? "#003892" : "#001e3c",
+    width: 32,
+    height: 32,
+    "&:before": {
+      content: '""',
+      position: "absolute",
+      width: "100%",
+      height: "100%",
+      left: 0,
+      top: 0,
+      backgroundImage: `url('data:image/svg+xml;charset=utf-8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="white"><path d="M10 0a10 10 0 100 20 10 10 0 000-20z"/></svg>')`,
+    },
+  },
+  "& .MuiSwitch-track": {
+    opacity: 1,
+    backgroundColor: theme.palette.mode === "dark" ? "#8796A5" : "#aab4be",
+    borderRadius: 20 / 2,
+  },
+}));
 
 const DustbinDetail: React.FC = () => {
   const { binType } = useParams<{ binType: string }>();
@@ -34,6 +84,7 @@ const DustbinDetail: React.FC = () => {
     username: "dllmhgc",
     password: "@Dllm12345",
   };
+
   const details: Record<string, string> = {
     plastic: "This is a plastic bin used for recycling plastic waste.",
     paper: "This bin is used for paper recycling.",
@@ -41,7 +92,7 @@ const DustbinDetail: React.FC = () => {
     generalwaste: "This bin is for general waste",
   };
 
-  const handleButtonClick = (action: string) => {
+  const handleSwitchChange = (action: string) => {
     if (clientRef.current && binType) {
       const message = { cover: action };
       clientRef.current.publish(topic, JSON.stringify(message));
@@ -52,6 +103,33 @@ const DustbinDetail: React.FC = () => {
   const binDetail = binType
     ? details[binType.toLowerCase()] || "No details available."
     : "Dustbin type is not specified.";
+
+  // Default states for switches
+  const defaultState = {
+    cover: "close", // Default cover state
+    position: "down", // Default position (up/down)
+    lock: "lock", // Default lock state
+  };
+
+  const [coverState, setCoverState] = useState(defaultState.cover);
+  const [positionState, setPositionState] = useState(defaultState.position);
+  const [lockState, setLockState] = useState(defaultState.lock);
+
+  const resetToDefault = () => {
+    setCoverState(defaultState.cover);
+    setPositionState(defaultState.position);
+    setLockState(defaultState.lock);
+  };
+
+  // Reset states after 30 seconds of inactivity
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      resetToDefault();
+    }, 30000); // 30 seconds
+
+    return () => clearTimeout(timer); // Clean up the timer on component unmount
+  }, [coverState, positionState, lockState]);
+
   useEffect(() => {
     if (!binType) {
       console.warn("Bin type is not specified.");
@@ -145,6 +223,7 @@ const DustbinDetail: React.FC = () => {
           </p>
         </div>
       </div>
+
       <div className="card mb-4 shadow-sm">
         <div className="card-body text-center">
           <h2 className="card-title mb-3">Live Sensor Data</h2>
@@ -158,43 +237,49 @@ const DustbinDetail: React.FC = () => {
             Weight: <span className="fw-bold">{sensorData.weight}</span>
           </p>
         </div>
-        <div className="d-flex flex-wrap justify-content-center gap-2">
-          <button
-            className="btn btn-success"
-            onClick={() => handleButtonClick("open")}
-          >
-            Open Bin
-          </button>
-          <button
-            className="btn btn-danger"
-            onClick={() => handleButtonClick("close")}
-          >
-            Close Bin
-          </button>
-          <button
-            className="btn btn-warning"
-            onClick={() => handleButtonClick("up")}
-          >
-            Up Bin
-          </button>
-          <button
-            className="btn btn-info"
-            onClick={() => handleButtonClick("down")}
-          >
-            Down Bin
-          </button>
-          <button
-            className="btn btn-secondary"
-            onClick={() => handleButtonClick("lock")}
-          >
-            Lock Bin
-          </button>
-          <button
-            className="btn btn-primary"
-            onClick={() => handleButtonClick("unlock")}
-          >
-            Unlock Bin
-          </button>
+
+        <div className="d-flex flex-wrap justify-content-center gap-3">
+          {/* Cover Switch */}
+          <FormControlLabel
+            control={
+              <CustomSwitch
+                checked={coverState === "open"}
+                onChange={(e) => {
+                  setCoverState(e.target.checked ? "open" : "close");
+                  handleSwitchChange(e.target.checked ? "open" : "close");
+                }}
+              />
+            }
+            label="Cover"
+          />
+
+          {/* Position Switch */}
+          <FormControlLabel
+            control={
+              <CustomSwitch
+                checked={positionState === "up"}
+                onChange={(e) => {
+                  setPositionState(e.target.checked ? "up" : "down");
+                  handleSwitchChange(e.target.checked ? "up" : "down");
+                }}
+              />
+            }
+            label="Position"
+          />
+
+          {/* Lock Switch */}
+          <FormControlLabel
+            control={
+              <CustomSwitch
+                checked={lockState === "unlock"}
+                onChange={(e) => {
+                  setLockState(e.target.checked ? "unlock" : "lock");
+                  handleSwitchChange(e.target.checked ? "unlock" : "lock");
+                }}
+              />
+            }
+            label="Lock"
+          />
         </div>
       </div>
 
