@@ -207,8 +207,8 @@ const DustbinDetail: React.FC = () => {
           ]);
 
           // Check for threshold exceedance
-          const volumeThreshold = 80; // Example threshold
-          const weightThreshold = 50; // Example threshold
+          const volumeThreshold = 8000000000; // Example threshold
+          const weightThreshold = 5000000000; // Example threshold
 
           if (latestData.volumn > volumeThreshold) {
             setSnackbarMessage(
