@@ -1,18 +1,35 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useMemo } from "react";
 import { useParams } from "react-router-dom";
 import mqtt, { MqttClient, IClientOptions } from "mqtt";
-import { ref, onValue } from "firebase/database";
+import { ref, onValue, limitToLast, query } from "firebase/database"; // Corrected imports
 import { database } from "../firebase";
 import LoadingPage from "./LoadingPage";
-import { styled, Switch, FormControlLabel } from "@mui/material";
+import {
+  styled,
+  Switch,
+  FormControlLabel,
+  Snackbar,
+  Alert,
+} from "@mui/material"; // Snackbar and Alert
 import WbSunnyIcon from "@mui/icons-material/WbSunny"; // Day icon
 import NightlightRoundIcon from "@mui/icons-material/NightlightRound"; // Night icon
 import "bootstrap/dist/css/bootstrap.min.css";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from "recharts"; // Recharts components
 
 interface SensorData {
   cover: string;
   volumn: number;
   weight: number;
+  timestamp?: number; // Timestamp for historical data
 }
 
 const CustomSwitch = styled(Switch)(({ theme }) => ({
@@ -76,14 +93,19 @@ const DustbinDetail: React.FC = () => {
   const [messageLog, setMessageLog] = useState<string[]>([]);
   const topic = binType ? `srb/${binType.toLowerCase()}/motor` : "";
 
-  const options: IClientOptions = {
-    protocol: "wss",
-    host: "21be7b7891f540b79302d07822b51558.s1.eu.hivemq.cloud",
-    port: 8884,
-    path: "/mqtt",
-    username: "dllmhgc",
-    password: "@Dllm12345",
-  };
+  // Memoize options to prevent unnecessary re-renders
+  const options: IClientOptions = useMemo(
+    () => ({
+      protocol: "wss",
+      host: "21be7b7891f540b79302d07822b51558.s1.eu.hivemq.cloud",
+      port: 8884,
+      path: "/mqtt",
+      username: "dllmhgc",
+      password: "@Dllm12345",
+      reconnectPeriod: 1000, // Attempt reconnection every 1 second
+    }),
+    []
+  );
 
   const details: Record<string, string> = {
     plastic: "This is a plastic bin used for recycling plastic waste.",
@@ -130,30 +152,104 @@ const DustbinDetail: React.FC = () => {
     return () => clearTimeout(timer); // Clean up the timer on component unmount
   }, [coverState, positionState, lockState]);
 
+  // State for historical data
+  const [historicalData, setHistoricalData] = useState<SensorData[]>([]);
+
+  // States for notifications
+  const [openSnackbar, setOpenSnackbar] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState("");
+  const [snackbarSeverity, setSnackbarSeverity] = useState<
+    "error" | "warning" | "info" | "success"
+  >("info");
+
+  const handleSnackbarClose = () => {
+    setOpenSnackbar(false);
+  };
+
+  /**
+   * Firebase Data Fetching
+   */
   useEffect(() => {
     if (!binType) {
       console.warn("Bin type is not specified.");
       return;
     }
 
-    // Fetch latest sensor data from Firebase
+    // Fetch latest sensor data from Firebase with optimization
     const binRef = ref(database, "sensorData");
-    let latestData: { cover: any; volumn: any; weight: any };
-    const unsubscribe = onValue(binRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data) {
-        const keys = Object.keys(data);
-        const newestKey = keys[keys.length - 1];
-        latestData = data[newestKey];
-        setSensorData({
-          cover: latestData.cover || "close",
-          volumn: latestData.volumn || 0,
-          weight: latestData.weight || 0,
-        });
-      }
-    });
+    const binQuery = query(binRef, limitToLast(100)); // Correctly create a query with limitToLast
 
-    // MQTT Connection
+    let latestData: { cover: any; volumn: any; weight: any; timestamp?: any };
+    const unsubscribe = onValue(
+      binQuery, // Use the query instead of options object
+      (snapshot) => {
+        const data = snapshot.val();
+        if (data) {
+          const keys = Object.keys(data);
+          const newestKey = keys[keys.length - 1];
+          latestData = data[newestKey];
+          setSensorData({
+            cover: latestData.cover || "close",
+            volumn: latestData.volumn || 0,
+            weight: latestData.weight || 0,
+            timestamp: latestData.timestamp || Date.now(),
+          });
+
+          // Update historical data
+          setHistoricalData((prevData) => [
+            ...prevData,
+            {
+              cover: latestData.cover || "close",
+              volumn: latestData.volumn || 0,
+              weight: latestData.weight || 0,
+              timestamp: latestData.timestamp || Date.now(),
+            },
+          ]);
+
+          // Check for threshold exceedance
+          const volumeThreshold = 80; // Example threshold
+          const weightThreshold = 50; // Example threshold
+
+          if (latestData.volumn > volumeThreshold) {
+            setSnackbarMessage(
+              `Volume exceeded threshold: ${latestData.volumn}`
+            );
+            setSnackbarSeverity("warning");
+            setOpenSnackbar(true);
+          }
+
+          if (latestData.weight > weightThreshold) {
+            setSnackbarMessage(
+              `Weight exceeded threshold: ${latestData.weight}`
+            );
+            setSnackbarSeverity("warning");
+            setOpenSnackbar(true);
+          }
+        }
+      },
+      (error) => {
+        console.error("Failed to fetch data:", error);
+        setSnackbarMessage("Failed to fetch sensor data.");
+        setSnackbarSeverity("error");
+        setOpenSnackbar(true);
+      }
+    );
+
+    return () => {
+      unsubscribe();
+    };
+  }, [binType]);
+
+  /**
+   * MQTT Connection Setup
+   */
+  useEffect(() => {
+    if (!binType) {
+      console.warn("Bin type is not specified.");
+      return;
+    }
+
+    // Initialize MQTT client
     const client: MqttClient = mqtt.connect(options);
     clientRef.current = client;
 
@@ -164,6 +260,11 @@ const DustbinDetail: React.FC = () => {
       client.subscribe(topic, (err) => {
         if (err) {
           console.error("Subscription error:", err);
+          setSnackbarMessage("Subscription error.");
+          setSnackbarSeverity("error");
+          setOpenSnackbar(true);
+        } else {
+          console.log(`Subscribed to topic: ${topic}`);
         }
       });
     });
@@ -174,25 +275,78 @@ const DustbinDetail: React.FC = () => {
 
       try {
         const data = JSON.parse(receivedMessage);
-        setSensorData({
-          cover: data.cover || "close",
-          volumn: latestData.volumn || 0,
-          weight: latestData.weight || 0,
-        });
+        setSensorData((prevData) => ({
+          ...prevData,
+          cover: data.cover || prevData.cover,
+          volumn: data.volumn || prevData.volumn,
+          weight: data.weight || prevData.weight,
+          timestamp: Date.now(),
+        }));
+
+        // Update historical data
+        setHistoricalData((prevData) => [
+          ...prevData,
+          {
+            cover: data.cover || "close",
+            volumn: data.volumn || 0,
+            weight: data.weight || 0,
+            timestamp: Date.now(),
+          },
+        ]);
+
+        // Check for threshold exceedance
+        const volumeThreshold = 80; // Example threshold
+        const weightThreshold = 50; // Example threshold
+
+        if (data.volumn && data.volumn > volumeThreshold) {
+          setSnackbarMessage(`Volume exceeded threshold: ${data.volumn}`);
+          setSnackbarSeverity("warning");
+          setOpenSnackbar(true);
+        }
+
+        if (data.weight && data.weight > weightThreshold) {
+          setSnackbarMessage(`Weight exceeded threshold: ${data.weight}`);
+          setSnackbarSeverity("warning");
+          setOpenSnackbar(true);
+        }
       } catch (error) {
         console.error("Error parsing MQTT message:", error);
       }
     });
 
-    client.on("error", () => {
+    client.on("error", (error) => {
+      console.error("MQTT Connection error:", error);
       setIsConnected(false);
+      setSnackbarMessage("MQTT connection error.");
+      setSnackbarSeverity("error");
+      setOpenSnackbar(true);
+      client.end(); // End the client on error to prevent multiple attempts
     });
 
+    client.on("reconnect", () => {
+      console.log("Reconnecting to MQTT broker...");
+      setSnackbarMessage("Reconnecting to MQTT broker...");
+      setSnackbarSeverity("info");
+      setOpenSnackbar(true);
+    });
+
+    client.on("close", () => {
+      console.log("MQTT connection closed");
+      setIsConnected(false);
+      setSnackbarMessage("MQTT connection closed.");
+      setSnackbarSeverity("info");
+      setOpenSnackbar(true);
+    });
+
+    // Cleanup on component unmount
     return () => {
-      client.end();
-      unsubscribe();
+      if (clientRef.current) {
+        clientRef.current.end(true, () => {
+          console.log("MQTT client disconnected");
+        });
+      }
     };
-  }, [binType]);
+  }, [binType, options, topic]); // Updated dependencies
 
   if (!isConnected) {
     return <LoadingPage />;
@@ -283,7 +437,43 @@ const DustbinDetail: React.FC = () => {
         </div>
       </div>
 
-      <div className="card shadow-sm">
+      {/* Historical Data Chart */}
+      <div className="card mb-4 shadow-sm">
+        <div className="card-body">
+          <h2 className="card-title">Historical Sensor Data</h2>
+          {historicalData.length > 0 ? (
+            <ResponsiveContainer width="100%" height={300}>
+              <LineChart
+                data={historicalData.map((data) => ({
+                  time: new Date(
+                    data.timestamp || Date.now()
+                  ).toLocaleTimeString(),
+                  volume: data.volumn,
+                  weight: data.weight,
+                }))}
+                margin={{
+                  top: 5,
+                  right: 30,
+                  left: 20,
+                  bottom: 5,
+                }}
+              >
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="time" />
+                <YAxis />
+                <Tooltip />
+                <Legend />
+                <Line type="monotone" dataKey="volume" stroke="#8884d8" />
+                <Line type="monotone" dataKey="weight" stroke="#82ca9d" />
+              </LineChart>
+            </ResponsiveContainer>
+          ) : (
+            <p className="text-muted">No historical data available.</p>
+          )}
+        </div>
+      </div>
+
+      <div className="card mb-4 shadow-sm">
         <div className="card-body">
           <h2 className="card-title">Message Log</h2>
           {messageLog.length > 0 ? (
@@ -302,6 +492,22 @@ const DustbinDetail: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Snackbar for notifications */}
+      <Snackbar
+        open={openSnackbar}
+        autoHideDuration={6000}
+        onClose={handleSnackbarClose}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+      >
+        <Alert
+          onClose={handleSnackbarClose}
+          severity={snackbarSeverity}
+          sx={{ width: "100%" }}
+        >
+          {snackbarMessage}
+        </Alert>
+      </Snackbar>
     </div>
   );
 };
