@@ -21,7 +21,7 @@ const Dustbin = () => <DustbinHome />;
 const Marketing = () => <h1>Marketing Page</h1>;
 const Settings = () => (
   <h1>
-    <SensorData />
+    <UserProfile />
   </h1>
 );
 
@@ -75,7 +75,7 @@ const App: React.FC = () => {
                 }
               />
               <Route
-                path="/SensorData"
+                path="/Setting"
                 element={
                   <ProtectedRoute>
                     <Settings />
