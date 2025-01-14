@@ -102,8 +102,12 @@ const DustbinDetail: React.FC = () => {
   const [messageLog, setMessageLog] = useState<string[]>([]);
 
   // Construct MQTT topics based on binType
-  const commandTopic = binType ? `srb/${binType.toLowerCase()}/commands` : "";
-  const dataTopic = binType ? `srb/${binType.toLowerCase()}/data` : "";
+  const commandTopic = binType
+    ? `srb/${binType.toLowerCase()}/eabc24b6-ca1c-4c94-86e1-2ebbc4952a78`
+    : "";
+  const dataTopic = binType
+    ? `srb/${binType.toLowerCase()}/eabc24b6-ca1c-4c94-86e1-2ebbc4952a78`
+    : "";
 
   // Define MQTT options using environment variables for security
   const options: IClientOptions = useMemo(
