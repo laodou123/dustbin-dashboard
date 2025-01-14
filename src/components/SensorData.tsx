@@ -15,7 +15,7 @@ const SensorData: React.FC = () => {
     useState<SensorDataItem | null>(null);
 
   useEffect(() => {
-    const sensorDataRef = ref(database, "sensorData");
+    const sensorDataRef = ref(database, "metalStatus");
 
     const unsubscribe = onValue(sensorDataRef, (snapshot) => {
       const data = snapshot.val();

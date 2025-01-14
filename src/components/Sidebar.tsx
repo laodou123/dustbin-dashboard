@@ -9,7 +9,7 @@ const Sidebar: React.FC = () => {
   const menuItems = [
     { name: "Overview", path: "/dashboard", icon: <FaTachometerAlt /> },
     { name: "DustbinHome", path: "/DustbinHome", icon: <FaHome /> },
-    { name: "Settings", path: "/settings", icon: <FaCog /> },
+    { name: "Settings", path: "/SensorData", icon: <FaCog /> },
   ];
 
   // Toggle sidebar collapse state

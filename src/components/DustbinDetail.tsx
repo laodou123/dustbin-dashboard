@@ -1,7 +1,9 @@
+// src/components/DustbinDetail.tsx
+
 import React, { useEffect, useState, useRef, useMemo } from "react";
 import { useParams } from "react-router-dom";
 import mqtt, { MqttClient, IClientOptions } from "mqtt";
-import { ref, onValue, limitToLast, query } from "firebase/database"; // Corrected imports
+import { ref, onValue, onChildAdded } from "firebase/database";
 import { database } from "../firebase";
 import LoadingPage from "./LoadingPage";
 import {
@@ -10,9 +12,7 @@ import {
   FormControlLabel,
   Snackbar,
   Alert,
-} from "@mui/material"; // Snackbar and Alert
-import WbSunnyIcon from "@mui/icons-material/WbSunny"; // Day icon
-import NightlightRoundIcon from "@mui/icons-material/NightlightRound"; // Night icon
+} from "@mui/material";
 import "bootstrap/dist/css/bootstrap.min.css";
 import {
   LineChart,
@@ -23,15 +23,20 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
-} from "recharts"; // Recharts components
+} from "recharts";
 
+// Define the SensorData interface within the component
 interface SensorData {
+  binCapacity: number;
   cover: string;
-  volumn: number;
-  weight: number;
-  timestamp?: number; // Timestamp for historical data
+  lock: string;
+  timestamp: number; // Changed to number for consistency
+  uid: string;
+  upDn: string;
+  weightInGrams?: string; // Optional field for weight
 }
 
+// Styled Switch component
 const CustomSwitch = styled(Switch)(({ theme }) => ({
   width: 62,
   height: 34,
@@ -82,46 +87,58 @@ const CustomSwitch = styled(Switch)(({ theme }) => ({
 const DustbinDetail: React.FC = () => {
   const { binType } = useParams<{ binType: string }>();
 
-  const [sensorData, setSensorData] = useState<SensorData>({
-    cover: "open",
-    volumn: 0,
-    weight: 0,
-  });
+  // State to hold the latest sensor data
+  const [sensorData, setSensorData] = useState<SensorData | null>(null);
 
+  // State to handle loading and errors
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // MQTT connection state
   const [isConnected, setIsConnected] = useState(false);
   const clientRef = useRef<MqttClient | null>(null);
-  const [messageLog, setMessageLog] = useState<string[]>([]);
-  const topic = binType ? `srb/${binType.toLowerCase()}/motor` : "";
 
-  // Memoize options to prevent unnecessary re-renders
+  // Message log for MQTT messages
+  const [messageLog, setMessageLog] = useState<string[]>([]);
+
+  // Construct MQTT topics based on binType
+  const commandTopic = binType ? `srb/${binType.toLowerCase()}/commands` : "";
+  const dataTopic = binType ? `srb/${binType.toLowerCase()}/data` : "";
+
+  // Define MQTT options using environment variables for security
   const options: IClientOptions = useMemo(
     () => ({
       protocol: "wss",
-      host: "21be7b7891f540b79302d07822b51558.s1.eu.hivemq.cloud",
-      port: 8884,
+      host:
+        process.env.REACT_APP_MQTT_HOST ||
+        "21be7b7891f540b79302d07822b51558.s1.eu.hivemq.cloud",
+      port: Number(process.env.REACT_APP_MQTT_PORT) || 8884,
       path: "/mqtt",
-      username: "dllmhgc",
-      password: "@Dllm12345",
+      username: process.env.REACT_APP_MQTT_USERNAME || "dllmhgc",
+      password: process.env.REACT_APP_MQTT_PASSWORD || "@Dllm12345",
       reconnectPeriod: 1000, // Attempt reconnection every 1 second
     }),
     []
   );
 
+  // Details for each bin type
   const details: Record<string, string> = {
     plastic: "This is a plastic bin used for recycling plastic waste.",
     paper: "This bin is used for paper recycling.",
     metal: "Use this bin for metal waste recycling.",
-    generalwaste: "This bin is for general waste",
+    generalwaste: "This bin is for general waste.",
   };
 
+  // Handle actions (e.g., cover, position, lock)
   const handleSwitchChange = (action: string) => {
     if (clientRef.current && binType) {
-      const message = { cover: action };
-      clientRef.current.publish(topic, JSON.stringify(message));
-      console.log(`Published action message: ${JSON.stringify(message)}`);
+      const message = { command: action };
+      clientRef.current.publish(commandTopic, JSON.stringify(message));
+      console.log(`Published command message: ${JSON.stringify(message)}`);
     }
   };
 
+  // Get bin details based on binType
   const binDetail = binType
     ? details[binType.toLowerCase()] || "No details available."
     : "Dustbin type is not specified.";
@@ -143,7 +160,7 @@ const DustbinDetail: React.FC = () => {
     setLockState(defaultState.lock);
   };
 
-  // Reset states after 30 seconds of inactivity
+  // Reset switch states after 30 seconds of inactivity
   useEffect(() => {
     const timer = setTimeout(() => {
       resetToDefault();
@@ -167,7 +184,104 @@ const DustbinDetail: React.FC = () => {
   };
 
   /**
-   * Firebase Data Fetching
+   * Firebase Data Fetching for Bin Status
+   */
+  useEffect(() => {
+    if (!binType) {
+      console.warn("Bin type is not specified.");
+      setError("Bin type is not specified.");
+      setLoading(false);
+      return;
+    }
+
+    // Construct the Firebase path based on binType
+    const binStatusPath = `${binType.toLowerCase()}Status`;
+
+    // Reference to the bin status in Firebase
+    const binRef = ref(database, binStatusPath);
+
+    // Listen for value changes
+    const unsubscribe = onValue(
+      binRef,
+      (snapshot) => {
+        const data = snapshot.val();
+
+        if (data) {
+          const keys = Object.keys(data);
+          const latestKey = keys[keys.length - 1];
+          const latestData = data[latestKey] as SensorData;
+
+          // Validate the data structure
+          if (
+            typeof latestData.binCapacity === "number" &&
+            typeof latestData.cover === "string" &&
+            typeof latestData.lock === "string" &&
+            typeof latestData.timestamp === "string" && // Initially string in Firebase
+            typeof latestData.uid === "string" &&
+            typeof latestData.upDn === "string"
+          ) {
+            // Convert timestamp to number
+            const timestampNumber = new Date(latestData.timestamp).getTime();
+
+            setSensorData({
+              binCapacity: latestData.binCapacity,
+              cover: latestData.cover,
+              lock: latestData.lock,
+              timestamp: timestampNumber, // Assign number
+              uid: latestData.uid,
+              upDn: latestData.upDn,
+              weightInGrams: latestData.weightInGrams || "", // Initialize if not present
+            });
+            setLoading(false);
+
+            // Update historical data
+            setHistoricalData((prevData) => [
+              ...prevData,
+              {
+                binCapacity: latestData.binCapacity,
+                cover: latestData.cover,
+                lock: latestData.lock,
+                timestamp: timestampNumber,
+                uid: latestData.uid,
+                upDn: latestData.upDn,
+                weightInGrams: latestData.weightInGrams || "",
+              },
+            ]);
+
+            // Check for threshold exceedance
+            const capacityThreshold = -0.5; // Example threshold
+            if (latestData.binCapacity < capacityThreshold) {
+              setSnackbarMessage(
+                `Bin capacity below threshold: ${latestData.binCapacity}`
+              );
+              setSnackbarSeverity("warning");
+              setOpenSnackbar(true);
+            }
+          } else {
+            console.error("Invalid data structure:", latestData);
+            setError("Received data has an unexpected format.");
+            setLoading(false);
+          }
+        } else {
+          setError(`No sensor data available for ${binStatusPath}.`);
+          setLoading(false);
+        }
+      },
+      (error) => {
+        console.error("Error fetching sensor data:", error);
+        setError("Failed to fetch sensor data.");
+        setLoading(false);
+      }
+    );
+
+    // Cleanup listener on unmount
+    return () => {
+      unsubscribe();
+    };
+  }, [binType]);
+
+  /**
+   * Firebase Listener for Thrown Items
    */
   useEffect(() => {
     if (!binType) {
@@ -175,73 +289,70 @@ const DustbinDetail: React.FC = () => {
       return;
     }
 
-    // Fetch latest sensor data from Firebase with optimization
-    const binRef = ref(database, "sensorData");
-    const binQuery = query(binRef, limitToLast(100)); // Correctly create a query with limitToLast
+    const thrownPath = `thrown`; // Path to the thrown items
+    const thrownRef = ref(database, thrownPath);
 
-    let latestData: { cover: any; volumn: any; weight: any; timestamp?: any };
-    const unsubscribe = onValue(
-      binQuery, // Use the query instead of options object
-      (snapshot) => {
-        const data = snapshot.val();
-        if (data) {
-          const keys = Object.keys(data);
-          const newestKey = keys[keys.length - 1];
-          latestData = data[newestKey];
-          setSensorData({
-            cover: latestData.cover || "close",
-            volumn: latestData.volumn || 0,
-            weight: latestData.weight || 0,
-            timestamp: latestData.timestamp || Date.now(),
-          });
+    // Listen for new thrown items
+    const unsubscribe = onChildAdded(thrownRef, (snapshot) => {
+      const thrownData = snapshot.val();
 
-          // Update historical data
-          setHistoricalData((prevData) => [
-            ...prevData,
-            {
-              cover: latestData.cover || "close",
-              volumn: latestData.volumn || 0,
-              weight: latestData.weight || 0,
-              timestamp: latestData.timestamp || Date.now(),
-            },
-          ]);
+      if (thrownData) {
+        const { material, weightInGrams } = thrownData;
 
-          // Check for threshold exceedance
-          const volumeThreshold = 8000000000; // Example threshold
-          const weightThreshold = 5000000000; // Example threshold
+        // Validate the presence of required fields
+        if (material && weightInGrams) {
+          // Check if the material matches the current binType
+          if (material.toLowerCase() === binType.toLowerCase()) {
+            // Update sensorData with the new weight
+            setSensorData((prevData) => {
+              if (prevData) {
+                // Optionally, adjust binCapacity based on weight
+                // For example, decrement binCapacity by a factor of weightInGrams
+                // Here, we'll just add weightInGrams to sensorData
 
-          if (latestData.volumn > volumeThreshold) {
+                return {
+                  ...prevData,
+                  weightInGrams, // Add or update weightInGrams
+                };
+              }
+              return prevData;
+            });
+
+            // Update historical data
+            setHistoricalData((prevData) => [
+              ...prevData,
+              {
+                binCapacity: sensorData?.binCapacity || 0,
+                cover: sensorData?.cover || "",
+                lock: sensorData?.lock || "",
+                timestamp: Date.now(), // Current timestamp
+                uid: sensorData?.uid || "",
+                upDn: sensorData?.upDn || "",
+                weightInGrams, // Add weight
+              },
+            ]);
+
+            // Show a snackbar notification
             setSnackbarMessage(
-              `Volume exceeded threshold: ${latestData.volumn}`
+              `Added ${weightInGrams}g to the ${material} bin.`
             );
-            setSnackbarSeverity("warning");
+            setSnackbarSeverity("success");
             setOpenSnackbar(true);
           }
-
-          if (latestData.weight > weightThreshold) {
-            setSnackbarMessage(
-              `Weight exceeded threshold: ${latestData.weight}`
-            );
-            setSnackbarSeverity("warning");
-            setOpenSnackbar(true);
-          }
+        } else {
+          console.warn("Thrown data is missing 'material' or 'weightInGrams'.");
         }
-      },
-      (error) => {
-        console.error("Failed to fetch data:", error);
-        setSnackbarMessage("Failed to fetch sensor data.");
-        setSnackbarSeverity("error");
-        setOpenSnackbar(true);
       }
-    );
+    });
 
+    // Cleanup listener on unmount
     return () => {
       unsubscribe();
     };
-  }, [binType]);
+  }, [binType, sensorData]);
 
   /**
-   * MQTT Connection Setup
+   * MQTT Connection Setup with Message Filtering
    */
   useEffect(() => {
     if (!binType) {
@@ -257,57 +368,67 @@ const DustbinDetail: React.FC = () => {
       console.log("Connected to MQTT broker");
       setIsConnected(true);
 
-      client.subscribe(topic, (err) => {
+      // Subscribe only to the dataTopic to receive sensor data
+      client.subscribe(dataTopic, (err) => {
         if (err) {
           console.error("Subscription error:", err);
           setSnackbarMessage("Subscription error.");
           setSnackbarSeverity("error");
           setOpenSnackbar(true);
         } else {
-          console.log(`Subscribed to topic: ${topic}`);
+          console.log(`Subscribed to topic: ${dataTopic}`);
         }
       });
     });
 
-    client.on("message", (topic, message) => {
+    client.on("message", (receivedTopic, message) => {
+      if (receivedTopic !== dataTopic) return; // Ignore messages not from dataTopic
+
       const receivedMessage = message.toString();
       setMessageLog((prevLog) => [...prevLog, receivedMessage]);
 
       try {
-        const data = JSON.parse(receivedMessage);
-        setSensorData((prevData) => ({
-          ...prevData,
-          cover: data.cover || prevData.cover,
-          volumn: data.volumn || prevData.volumn,
-          weight: data.weight || prevData.weight,
-          timestamp: Date.now(),
-        }));
+        const data = JSON.parse(receivedMessage) as Partial<SensorData> & {
+          command?: string;
+        };
 
-        // Update historical data
-        setHistoricalData((prevData) => [
-          ...prevData,
-          {
-            cover: data.cover || "close",
-            volumn: data.volumn || 0,
-            weight: data.weight || 0,
-            timestamp: Date.now(),
-          },
-        ]);
-
-        // Check for threshold exceedance
-        const volumeThreshold = 80; // Example threshold
-        const weightThreshold = 50; // Example threshold
-
-        if (data.volumn && data.volumn > volumeThreshold) {
-          setSnackbarMessage(`Volume exceeded threshold: ${data.volumn}`);
-          setSnackbarSeverity("warning");
-          setOpenSnackbar(true);
+        // Check if the message is a command
+        if (data.command) {
+          console.log(
+            "Received a command message. Ignoring sensor data update."
+          );
+          return; // Do not process command messages
         }
 
-        if (data.weight && data.weight > weightThreshold) {
-          setSnackbarMessage(`Weight exceeded threshold: ${data.weight}`);
-          setSnackbarSeverity("warning");
-          setOpenSnackbar(true);
+        // Validate that the message contains all required SensorData fields
+        if (
+          typeof data.binCapacity === "number" &&
+          typeof data.cover === "string" &&
+          typeof data.lock === "string" &&
+          typeof data.timestamp === "number" &&
+          typeof data.uid === "string" &&
+          typeof data.upDn === "string"
+        ) {
+          // Update sensorData without modifying timestamp unless it's genuinely new data
+          setSensorData(data as SensorData);
+
+          // Update historical data
+          setHistoricalData((prevHistorical) => [
+            ...prevHistorical,
+            data as SensorData,
+          ]);
+
+          // Check for threshold exceedance
+          const capacityThreshold = -0.5; // Example threshold
+          if (data.binCapacity < capacityThreshold) {
+            setSnackbarMessage(
+              `Bin capacity below threshold: ${data.binCapacity}`
+            );
+            setSnackbarSeverity("warning");
+            setOpenSnackbar(true);
+          }
+        } else {
+          console.log("Received a non-sensor data message. Ignoring.");
         }
       } catch (error) {
         console.error("Error parsing MQTT message:", error);
@@ -346,10 +467,13 @@ const DustbinDetail: React.FC = () => {
         });
       }
     };
-  }, [binType, options, topic]); // Updated dependencies
+  }, [binType, options, dataTopic]);
 
-  if (!isConnected) {
-    return <LoadingPage />;
+  /**
+   * Early Loading State for MQTT
+   */
+  if (!isConnected && loading) {
+    return <LoadingPage />; // Ensure LoadingPage shows a spinner or loading indicator
   }
 
   return (
@@ -360,6 +484,8 @@ const DustbinDetail: React.FC = () => {
           : "Error"}
       </h1>
       <p className="text-center lead">{binDetail}</p>
+
+      {/* MQTT Connection Info */}
       <div className="card mb-4 shadow-sm">
         <div className="card-body">
           <h3 className="card-title">MQTT Connection Info</h3>
@@ -373,25 +499,41 @@ const DustbinDetail: React.FC = () => {
             Broker: <span className="text-muted">{options.host}</span>
           </p>
           <p>
-            Topic: <span className="text-muted">{topic}</span>
+            Data Topic: <span className="text-muted">{dataTopic}</span>
           </p>
         </div>
       </div>
 
+      {/* Live Sensor Data */}
       <div className="card mb-4 shadow-sm">
         <div className="card-body text-center">
           <h2 className="card-title mb-3">Live Sensor Data</h2>
           <p className="fs-5 mb-1">
-            Cover: <span className="fw-bold">{sensorData.cover}</span>
+            <strong>Cover:</strong> {sensorData?.cover}
           </p>
           <p className="fs-5 mb-1">
-            Volume: <span className="fw-bold">{sensorData.volumn}</span>
+            <strong>Bin Capacity:</strong> {sensorData?.binCapacity}
           </p>
+          <p className="fs-5 mb-1">
+            <strong>Lock:</strong> {sensorData?.lock}
+          </p>
+          <p className="fs-5 mb-1">
+            <strong>Position:</strong> {sensorData?.upDn}
+          </p>
+          {sensorData?.weightInGrams && (
+            <p className="fs-5 mb-3">
+              <strong>Weight:</strong> {sensorData.weightInGrams} grams
+            </p>
+          )}
           <p className="fs-5 mb-3">
-            Weight: <span className="fw-bold">{sensorData.weight}</span>
+            <strong>Timestamp:</strong>{" "}
+            {sensorData
+              ? new Date(sensorData.timestamp).toLocaleString()
+              : "N/A"}
           </p>
         </div>
 
+        {/* Switches */}
         <div className="d-flex flex-wrap justify-content-center gap-3">
           {/* Cover Switch */}
           <FormControlLabel
@@ -399,8 +541,9 @@ const DustbinDetail: React.FC = () => {
               <CustomSwitch
                 checked={coverState === "open"}
                 onChange={(e) => {
-                  setCoverState(e.target.checked ? "open" : "close");
-                  handleSwitchChange(e.target.checked ? "open" : "close");
+                  const newState = e.target.checked ? "open" : "close";
+                  setCoverState(newState);
+                  handleSwitchChange(newState); // Sends { "command": "open" } or { "command": "close" }
                 }}
               />
             }
@@ -413,8 +556,9 @@ const DustbinDetail: React.FC = () => {
               <CustomSwitch
                 checked={positionState === "up"}
                 onChange={(e) => {
-                  setPositionState(e.target.checked ? "up" : "down");
-                  handleSwitchChange(e.target.checked ? "up" : "down");
+                  const newState = e.target.checked ? "up" : "down";
+                  setPositionState(newState);
+                  handleSwitchChange(newState); // Sends { "command": "up" } or { "command": "down" }
                 }}
               />
             }
@@ -427,8 +571,9 @@ const DustbinDetail: React.FC = () => {
               <CustomSwitch
                 checked={lockState === "unlock"}
                 onChange={(e) => {
-                  setLockState(e.target.checked ? "unlock" : "lock");
-                  handleSwitchChange(e.target.checked ? "unlock" : "lock");
+                  const newState = e.target.checked ? "unlock" : "lock";
+                  setLockState(newState);
+                  handleSwitchChange(newState); // Sends { "command": "unlock" } or { "command": "lock" }
                 }}
               />
             }
@@ -448,8 +593,9 @@ const DustbinDetail: React.FC = () => {
                   time: new Date(
                     data.timestamp || Date.now()
                   ).toLocaleTimeString(),
-                  volume: data.volumn,
-                  weight: data.weight,
+                  binCapacity: data.binCapacity,
+                  weightInGrams: data.weightInGrams || "0", // Include weight in the chart if needed
+                  // Add other fields as needed
                 }))}
                 margin={{
                   top: 5,
@@ -463,8 +609,19 @@ const DustbinDetail: React.FC = () => {
                 <YAxis />
                 <Tooltip />
                 <Legend />
-                <Line type="monotone" dataKey="volume" stroke="#8884d8" />
-                <Line type="monotone" dataKey="weight" stroke="#82ca9d" />
+                <Line
+                  type="monotone"
+                  dataKey="binCapacity"
+                  stroke="#8884d8"
+                  activeDot={{ r: 8 }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="weightInGrams"
+                  stroke="#82ca9d"
+                  activeDot={{ r: 8 }}
+                />
+                {/* Add other lines as needed */}
               </LineChart>
             </ResponsiveContainer>
           ) : (
@@ -473,6 +630,7 @@ const DustbinDetail: React.FC = () => {
         </div>
       </div>
 
+      {/* Message Log */}
       <div className="card mb-4 shadow-sm">
         <div className="card-body">
           <h2 className="card-title">Message Log</h2>
