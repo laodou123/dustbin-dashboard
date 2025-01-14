@@ -25,7 +25,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
-// Define the SensorData interface within the component
+// Define the SensorData interface
 interface SensorData {
   binCapacity: number;
   cover: string;
@@ -233,30 +233,6 @@ const DustbinDetail: React.FC = () => {
               weightInGrams: latestData.weightInGrams || "", // Initialize if not present
             });
             setLoading(false);
-
-            // Update historical data
-            setHistoricalData((prevData) => [
-              ...prevData,
-              {
-                binCapacity: latestData.binCapacity,
-                cover: latestData.cover,
-                lock: latestData.lock,
-                timestamp: timestampNumber,
-                uid: latestData.uid,
-                upDn: latestData.upDn,
-                weightInGrams: latestData.weightInGrams || "",
-              },
-            ]);
-
-            // Check for threshold exceedance
-            const capacityThreshold = -0.5; // Example threshold
-            if (latestData.binCapacity < capacityThreshold) {
-              setSnackbarMessage(
-                `Bin capacity below threshold: ${latestData.binCapacity}`
-              );
-              setSnackbarSeverity("warning");
-              setOpenSnackbar(true);
-            }
           } else {
             console.error("Invalid data structure:", latestData);
             setError("Received data has an unexpected format.");
@@ -303,34 +279,17 @@ const DustbinDetail: React.FC = () => {
         if (material && weightInGrams) {
           // Check if the material matches the current binType
           if (material.toLowerCase() === binType.toLowerCase()) {
-            // Update sensorData with the new weight
+            // Update sensorData with the new weight without adjusting binCapacity
             setSensorData((prevData) => {
               if (prevData) {
-                // Optionally, adjust binCapacity based on weight
-                // For example, decrement binCapacity by a factor of weightInGrams
-                // Here, we'll just add weightInGrams to sensorData
-
                 return {
                   ...prevData,
-                  weightInGrams, // Add or update weightInGrams
+                  weightInGrams,
+                  timestamp: Date.now(), // Update timestamp
                 };
               }
               return prevData;
             });
-
-            // Update historical data
-            setHistoricalData((prevData) => [
-              ...prevData,
-              {
-                binCapacity: sensorData?.binCapacity || 0,
-                cover: sensorData?.cover || "",
-                lock: sensorData?.lock || "",
-                timestamp: Date.now(), // Current timestamp
-                uid: sensorData?.uid || "",
-                upDn: sensorData?.upDn || "",
-                weightInGrams, // Add weight
-              },
-            ]);
 
             // Show a snackbar notification
             setSnackbarMessage(
@@ -349,7 +308,35 @@ const DustbinDetail: React.FC = () => {
     return () => {
       unsubscribe();
     };
-  }, [binType, sensorData]);
+  }, [binType]);
+
+  /**
+   * Centralized Historical Data Update based on sensorData
+   */
+  useEffect(() => {
+    if (sensorData) {
+      setHistoricalData((prevHistorical) => {
+        const updatedHistorical = [...prevHistorical, { ...sensorData }];
+
+        // Optional: Limit the size to 100 entries
+        if (updatedHistorical.length > 100) {
+          updatedHistorical.shift(); // Remove the oldest entry
+        }
+
+        return updatedHistorical;
+      });
+
+      // Check for threshold exceedance
+      const capacityThreshold = -0.5; // Example threshold
+      if (sensorData.binCapacity < capacityThreshold) {
+        setSnackbarMessage(
+          `Bin capacity below threshold: ${sensorData.binCapacity}`
+        );
+        setSnackbarSeverity("warning");
+        setOpenSnackbar(true);
+      }
+    }
+  }, [sensorData]);
 
   /**
    * MQTT Connection Setup with Message Filtering
@@ -412,11 +399,7 @@ const DustbinDetail: React.FC = () => {
           // Update sensorData without modifying timestamp unless it's genuinely new data
           setSensorData(data as SensorData);
 
-          // Update historical data
-          setHistoricalData((prevHistorical) => [
-            ...prevHistorical,
-            data as SensorData,
-          ]);
+          // The centralized useEffect will handle historicalData
 
           // Check for threshold exceedance
           const capacityThreshold = -0.5; // Example threshold
@@ -594,7 +577,7 @@ const DustbinDetail: React.FC = () => {
                     data.timestamp || Date.now()
                   ).toLocaleTimeString(),
                   binCapacity: data.binCapacity,
-                  weightInGrams: data.weightInGrams || "0", // Include weight in the chart if needed
+                  weightInGrams: parseFloat(data.weightInGrams || "0"), // Convert to number for charting
                   // Add other fields as needed
                 }))}
                 margin={{
