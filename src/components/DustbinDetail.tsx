@@ -12,15 +12,32 @@ import {
   FormControlLabel,
   Snackbar,
   Alert,
+  Grid,
+  Card,
+  CardContent,
+  Typography,
+  Box,
+  Tooltip,
+  useTheme,
+  useMediaQuery,
 } from "@mui/material";
-import "bootstrap/dist/css/bootstrap.min.css";
+import {
+  Delete as CoverIcon,
+  Lock as LockIcon,
+  LocationOn as PositionIcon,
+  Height as WeightIcon,
+  History as HistoryIcon,
+  Message as MessageIcon,
+  Wifi as WifiIcon,
+  WifiOff as WifiOffIcon,
+} from "@mui/icons-material"; // Ensure @mui/icons-material is installed
 import {
   LineChart,
   Line,
   XAxis,
   YAxis,
   CartesianGrid,
-  Tooltip,
+  Tooltip as RechartsTooltip,
   Legend,
   ResponsiveContainer,
 } from "recharts";
@@ -55,7 +72,8 @@ const CustomSwitch = styled(Switch)(({ theme }) => ({
         height: "100%",
         left: 0,
         top: 0,
-        backgroundImage: `url('data:image/svg+xml;charset=utf-8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="white"><path d="M10 0a10 10 0 100 20 10 10 0 000-20z"/></svg>')`,
+        backgroundImage: `url('data:image/svg+xml;charset=utf-8,<svg xmlns="http://www.w3.org/2000/svg" 
+          viewBox="0 0 20 20" fill="white"><path d="M10 0a10 10 0 100 20 10 10 0 000-20z"/></svg>')`,
       },
       "& + .MuiSwitch-track": {
         opacity: 1,
@@ -74,7 +92,8 @@ const CustomSwitch = styled(Switch)(({ theme }) => ({
       height: "100%",
       left: 0,
       top: 0,
-      backgroundImage: `url('data:image/svg+xml;charset=utf-8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="white"><path d="M10 0a10 10 0 100 20 10 10 0 000-20z"/></svg>')`,
+      backgroundImage: `url('data:image/svg+xml;charset=utf-8,<svg xmlns="http://www.w3.org/2000/svg" 
+        viewBox="0 0 20 20" fill="white"><path d="M10 0a10 10 0 100 20 10 10 0 000-20z"/></svg>')`,
     },
   },
   "& .MuiSwitch-track": {
@@ -86,6 +105,10 @@ const CustomSwitch = styled(Switch)(({ theme }) => ({
 
 const DustbinDetail: React.FC = () => {
   const { binType } = useParams<{ binType: string }>();
+
+  // Theme and responsive breakpoints
+  const theme = useTheme();
+  const isSmDown = useMediaQuery(theme.breakpoints.down("sm"));
 
   // State to hold the latest sensor data
   const [sensorData, setSensorData] = useState<SensorData | null>(null);
@@ -464,179 +487,428 @@ const DustbinDetail: React.FC = () => {
   }
 
   return (
-    <div className="container my-5 p-4 bg-light rounded shadow">
-      <h1 className="text-center mb-4 text-primary">
-        {binType
-          ? `${binType.charAt(0).toUpperCase() + binType.slice(1)} Bin`
-          : "Error"}
-      </h1>
-      <p className="text-center lead">{binDetail}</p>
-
-      {/* MQTT Connection Info */}
-      <div className="card mb-4 shadow-sm">
-        <div className="card-body">
-          <h3 className="card-title">MQTT Connection Info</h3>
-          <p>
-            Status:{" "}
-            <span className="fw-bold">
-              {isConnected ? "Connected" : "Disconnected"}
-            </span>
-          </p>
-          <p>
-            Broker: <span className="text-muted">{options.host}</span>
-          </p>
-          <p>
-            Data Topic: <span className="text-muted">{dataTopic}</span>
-          </p>
-        </div>
-      </div>
-
-      {/* Live Sensor Data */}
-      <div className="card mb-4 shadow-sm">
-        <div className="card-body text-center">
-          <h2 className="card-title mb-3">Live Sensor Data</h2>
-          <p className="fs-5 mb-1">
-            <strong>Cover:</strong> {sensorData?.cover}
-          </p>
-          <p className="fs-5 mb-1">
-            <strong>Bin Capacity:</strong> {sensorData?.binCapacity}
-          </p>
-          <p className="fs-5 mb-1">
-            <strong>Lock:</strong> {sensorData?.lock}
-          </p>
-          <p className="fs-5 mb-1">
-            <strong>Position:</strong> {sensorData?.upDn}
-          </p>
-          {sensorData?.weightInGrams && (
-            <p className="fs-5 mb-3">
-              <strong>Weight:</strong> {sensorData.weightInGrams} grams
-            </p>
-          )}
-          <p className="fs-5 mb-3">
-            <strong>Timestamp:</strong>{" "}
-            {sensorData
-              ? new Date(sensorData.timestamp).toLocaleString()
-              : "N/A"}
-          </p>
-        </div>
-
-        {/* Switches */}
-        <div className="d-flex flex-wrap justify-content-center gap-3">
-          {/* Cover Switch */}
-          <FormControlLabel
-            control={
-              <CustomSwitch
-                checked={coverState === "open"}
-                onChange={(e) => {
-                  const newState = e.target.checked ? "open" : "close";
-                  setCoverState(newState);
-                  handleSwitchChange(newState); // Sends { "command": "open" } or { "command": "close" }
-                }}
-              />
-            }
-            label="Cover"
-          />
-
-          {/* Position Switch */}
-          <FormControlLabel
-            control={
-              <CustomSwitch
-                checked={positionState === "up"}
-                onChange={(e) => {
-                  const newState = e.target.checked ? "up" : "down";
-                  setPositionState(newState);
-                  handleSwitchChange(newState); // Sends { "command": "up" } or { "command": "down" }
-                }}
-              />
-            }
-            label="Position"
-          />
-
-          {/* Lock Switch */}
-          <FormControlLabel
-            control={
-              <CustomSwitch
-                checked={lockState === "unlock"}
-                onChange={(e) => {
-                  const newState = e.target.checked ? "unlock" : "lock";
-                  setLockState(newState);
-                  handleSwitchChange(newState); // Sends { "command": "unlock" } or { "command": "lock" }
-                }}
-              />
-            }
-            label="Lock"
-          />
-        </div>
-      </div>
-
-      {/* Historical Data Chart */}
-      <div className="card mb-4 shadow-sm">
-        <div className="card-body">
-          <h2 className="card-title">Historical Sensor Data</h2>
-          {historicalData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart
-                data={historicalData.map((data) => ({
-                  time: new Date(
-                    data.timestamp || Date.now()
-                  ).toLocaleTimeString(),
-                  binCapacity: data.binCapacity,
-                  weightInGrams: parseFloat(data.weightInGrams || "0"), // Convert to number for charting
-                  // Add other fields as needed
-                }))}
-                margin={{
-                  top: 5,
-                  right: 30,
-                  left: 20,
-                  bottom: 5,
-                }}
+    <Box
+      sx={{
+        padding: isSmDown ? 2 : 4, // Responsive padding
+        backgroundColor: "#f0f2f5", // Softer background color for better contrast
+        minHeight: "100vh",
+        width: "100%",
+      }}
+    >
+      <Grid container spacing={4} justifyContent="center">
+        {/* Header Section */}
+        <Grid item xs={12}>
+          <Card
+            sx={{
+              padding: isSmDown ? 2 : 4,
+              boxShadow: 0,
+              border: "none",
+              backgroundColor: "transparent",
+              textAlign: "center",
+            }}
+            elevation={0}
+          >
+            <CardContent
+              sx={{
+                padding: 0,
+              }}
+            >
+              <Typography
+                variant={isSmDown ? "h4" : "h3"}
+                component="h1"
+                color="primary"
+                gutterBottom
               >
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="time" />
-                <YAxis />
-                <Tooltip />
-                <Legend />
-                <Line
-                  type="monotone"
-                  dataKey="binCapacity"
-                  stroke="#8884d8"
-                  activeDot={{ r: 8 }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="weightInGrams"
-                  stroke="#82ca9d"
-                  activeDot={{ r: 8 }}
-                />
-                {/* Add other lines as needed */}
-              </LineChart>
-            </ResponsiveContainer>
-          ) : (
-            <p className="text-muted">No historical data available.</p>
-          )}
-        </div>
-      </div>
+                {binType
+                  ? `${binType.charAt(0).toUpperCase() + binType.slice(1)} Bin`
+                  : "Error"}
+              </Typography>
+              <Typography
+                variant={isSmDown ? "h6" : "h5"}
+                component="p"
+                color="textSecondary"
+              >
+                {binDetail}
+              </Typography>
+            </CardContent>
+          </Card>
+        </Grid>
 
-      {/* Message Log */}
-      <div className="card mb-4 shadow-sm">
-        <div className="card-body">
-          <h2 className="card-title">Message Log</h2>
-          {messageLog.length > 0 ? (
-            <ul className="list-group">
-              {messageLog
-                .slice()
-                .reverse()
-                .map((msg, index) => (
-                  <li className="list-group-item" key={index}>
-                    {msg}
-                  </li>
-                ))}
-            </ul>
-          ) : (
-            <p className="text-muted">No messages received yet.</p>
-          )}
-        </div>
-      </div>
+        {/* MQTT Connection Info */}
+        <Grid item xs={12}>
+          <Card
+            sx={{
+              padding: isSmDown ? 2 : 4,
+              boxShadow: 0,
+              border: "none",
+              backgroundColor: "#ffffff", // White background for info section
+              borderRadius: 2,
+            }}
+          >
+            <CardContent>
+              <Typography variant="h5" gutterBottom>
+                MQTT Connection Info{" "}
+                {isConnected ? (
+                  <WifiIcon color="success" />
+                ) : (
+                  <WifiOffIcon color="error" />
+                )}
+              </Typography>
+              <Grid container spacing={2}>
+                <Grid item xs={12} sm={4}>
+                  <Typography variant="body1">
+                    <strong>Status:</strong>{" "}
+                    <Typography
+                      component="span"
+                      color={isConnected ? "green" : "red"}
+                      sx={{ verticalAlign: "middle" }}
+                    >
+                      {isConnected ? "Connected" : "Disconnected"}
+                    </Typography>
+                  </Typography>
+                </Grid>
+                <Grid item xs={12} sm={4}>
+                  <Typography variant="body1">
+                    <strong>Broker:</strong>{" "}
+                    <Typography component="span" color="textSecondary">
+                      {options.host}
+                    </Typography>
+                  </Typography>
+                </Grid>
+                <Grid item xs={12} sm={4}>
+                  <Typography variant="body1">
+                    <strong>Data Topic:</strong>{" "}
+                    <Typography component="span" color="textSecondary">
+                      {dataTopic}
+                    </Typography>
+                  </Typography>
+                </Grid>
+              </Grid>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* Live Sensor Data */}
+        <Grid item xs={12}>
+          <Card
+            sx={{
+              padding: isSmDown ? 2 : 4,
+              boxShadow: 3,
+              border: "none",
+              borderRadius: 2,
+              backgroundColor: "#ffffff",
+            }}
+          >
+            <CardContent>
+              <Typography variant="h5" gutterBottom>
+                Live Sensor Data
+              </Typography>
+              <Grid container spacing={3}>
+                {/* Cover */}
+                <Grid item xs={12} sm={6} md={3}>
+                  <Box
+                    display="flex"
+                    alignItems="center"
+                    bgcolor="#f9f9f9"
+                    p={2}
+                    borderRadius={1}
+                    height="100%"
+                  >
+                    <CoverIcon color="action" sx={{ fontSize: 40, mr: 2 }} />
+                    <Box>
+                      <Typography variant="h6">Cover</Typography>
+                      <Typography variant="body1">
+                        {sensorData?.cover || "N/A"}
+                      </Typography>
+                    </Box>
+                  </Box>
+                </Grid>
+
+                {/* Bin Capacity */}
+                <Grid item xs={12} sm={6} md={3}>
+                  <Box
+                    display="flex"
+                    alignItems="center"
+                    bgcolor="#f9f9f9"
+                    p={2}
+                    borderRadius={1}
+                    height="100%"
+                  >
+                    <WeightIcon color="action" sx={{ fontSize: 40, mr: 2 }} />
+                    <Box>
+                      <Typography variant="h6">Bin Capacity</Typography>
+                      <Typography variant="body1">
+                        {sensorData?.binCapacity || "N/A"}
+                      </Typography>
+                    </Box>
+                  </Box>
+                </Grid>
+
+                {/* Lock */}
+                <Grid item xs={12} sm={6} md={3}>
+                  <Box
+                    display="flex"
+                    alignItems="center"
+                    bgcolor="#f9f9f9"
+                    p={2}
+                    borderRadius={1}
+                    height="100%"
+                  >
+                    <LockIcon color="action" sx={{ fontSize: 40, mr: 2 }} />
+                    <Box>
+                      <Typography variant="h6">Lock</Typography>
+                      <Typography variant="body1">
+                        {sensorData?.lock || "N/A"}
+                      </Typography>
+                    </Box>
+                  </Box>
+                </Grid>
+
+                {/* Position */}
+                <Grid item xs={12} sm={6} md={3}>
+                  <Box
+                    display="flex"
+                    alignItems="center"
+                    bgcolor="#f9f9f9"
+                    p={2}
+                    borderRadius={1}
+                    height="100%"
+                  >
+                    <PositionIcon color="action" sx={{ fontSize: 40, mr: 2 }} />
+                    <Box>
+                      <Typography variant="h6">Position</Typography>
+                      <Typography variant="body1">
+                        {sensorData?.upDn || "N/A"}
+                      </Typography>
+                    </Box>
+                  </Box>
+                </Grid>
+
+                {/* Weight */}
+                {sensorData?.weightInGrams && (
+                  <Grid item xs={12} sm={6} md={3}>
+                    <Box
+                      display="flex"
+                      alignItems="center"
+                      bgcolor="#f9f9f9"
+                      p={2}
+                      borderRadius={1}
+                      height="100%"
+                    >
+                      <WeightIcon color="action" sx={{ fontSize: 40, mr: 2 }} />
+                      <Box>
+                        <Typography variant="h6">Weight</Typography>
+                        <Typography variant="body1">
+                          {sensorData.weightInGrams} grams
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </Grid>
+                )}
+
+                {/* Timestamp */}
+                <Grid item xs={12} sm={6} md={3}>
+                  <Box
+                    display="flex"
+                    alignItems="center"
+                    bgcolor="#f9f9f9"
+                    p={2}
+                    borderRadius={1}
+                    height="100%"
+                  >
+                    <Typography variant="h6" sx={{ mr: 2 }}>
+                      Timestamp
+                    </Typography>
+                    <Typography variant="body1">
+                      {sensorData
+                        ? new Date(sensorData.timestamp).toLocaleString()
+                        : "N/A"}
+                    </Typography>
+                  </Box>
+                </Grid>
+              </Grid>
+
+              {/* Switches */}
+              <Box
+                display="flex"
+                flexDirection={isSmDown ? "column" : "row"}
+                justifyContent="center"
+                alignItems="center"
+                gap={3}
+                mt={4}
+              >
+                {/* Cover Switch */}
+                <Tooltip title="Toggle Cover">
+                  <FormControlLabel
+                    control={
+                      <CustomSwitch
+                        checked={coverState === "open"}
+                        onChange={(e) => {
+                          const newState = e.target.checked ? "open" : "close";
+                          setCoverState(newState);
+                          handleSwitchChange(newState); // Sends { "command": "open" } or { "command": "close" }
+                        }}
+                      />
+                    }
+                    label="Cover"
+                  />
+                </Tooltip>
+
+                {/* Position Switch */}
+                <Tooltip title="Toggle Position">
+                  <FormControlLabel
+                    control={
+                      <CustomSwitch
+                        checked={positionState === "up"}
+                        onChange={(e) => {
+                          const newState = e.target.checked ? "up" : "down";
+                          setPositionState(newState);
+                          handleSwitchChange(newState); // Sends { "command": "up" } or { "command": "down" }
+                        }}
+                      />
+                    }
+                    label="Position"
+                  />
+                </Tooltip>
+
+                {/* Lock Switch */}
+                <Tooltip title="Toggle Lock">
+                  <FormControlLabel
+                    control={
+                      <CustomSwitch
+                        checked={lockState === "unlock"}
+                        onChange={(e) => {
+                          const newState = e.target.checked ? "unlock" : "lock";
+                          setLockState(newState);
+                          handleSwitchChange(newState); // Sends { "command": "unlock" } or { "command": "lock" }
+                        }}
+                      />
+                    }
+                    label="Lock"
+                  />
+                </Tooltip>
+              </Box>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* Historical Data Chart */}
+        <Grid item xs={12} md={6}>
+          <Card
+            sx={{
+              padding: isSmDown ? 2 : 4,
+              boxShadow: 3,
+              border: "none",
+              borderRadius: 2,
+              backgroundColor: "#ffffff",
+              height: "100%", // Ensure full height
+            }}
+          >
+            <CardContent>
+              <Box display="flex" alignItems="center" mb={2}>
+                <HistoryIcon color="primary" sx={{ marginRight: 1 }} />
+                <Typography variant="h5">Historical Sensor Data</Typography>
+              </Box>
+              {historicalData.length > 0 ? (
+                <ResponsiveContainer width="100%" height={300}>
+                  <LineChart
+                    data={historicalData.map((data) => ({
+                      time: new Date(
+                        data.timestamp || Date.now()
+                      ).toLocaleTimeString(),
+                      binCapacity: data.binCapacity,
+                      weightInGrams: parseFloat(data.weightInGrams || "0"), // Convert to number for charting
+                      // Add other fields as needed
+                    }))}
+                    margin={{
+                      top: 5,
+                      right: 30,
+                      left: 20,
+                      bottom: 5,
+                    }}
+                  >
+                    {/* Adjust grid lines and axis styles */}
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
+                    <XAxis dataKey="time" stroke="#000" />
+                    <YAxis stroke="#000" />
+                    <RechartsTooltip />
+                    <Legend />
+                    <Line
+                      type="monotone"
+                      dataKey="binCapacity"
+                      stroke="#8884d8"
+                      activeDot={{ r: 8 }}
+                      name="Bin Capacity"
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="weightInGrams"
+                      stroke="#82ca9d"
+                      activeDot={{ r: 8 }}
+                      name="Weight (g)"
+                    />
+                    {/* Add other lines as needed */}
+                  </LineChart>
+                </ResponsiveContainer>
+              ) : (
+                <Typography color="textSecondary">
+                  No historical data available.
+                </Typography>
+              )}
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* Message Log */}
+        <Grid item xs={12} md={6}>
+          <Card
+            sx={{
+              padding: isSmDown ? 2 : 4,
+              boxShadow: 3,
+              border: "none",
+              borderRadius: 2,
+              backgroundColor: "#ffffff",
+              height: "100%", // Ensure full height
+            }}
+          >
+            <CardContent>
+              <Box display="flex" alignItems="center" mb={2}>
+                <MessageIcon color="primary" sx={{ marginRight: 1 }} />
+                <Typography variant="h5">Message Log</Typography>
+              </Box>
+              {messageLog.length > 0 ? (
+                <Box
+                  sx={{
+                    maxHeight: 300,
+                    overflowY: "auto",
+                  }}
+                >
+                  {messageLog
+                    .slice()
+                    .reverse()
+                    .map((msg, index) => (
+                      <Typography
+                        variant="body2"
+                        key={index}
+                        sx={{
+                          padding: 1,
+                          borderBottom: "1px solid #e0e0e0",
+                          backgroundColor: "#f9f9f9",
+                        }}
+                      >
+                        {msg}
+                      </Typography>
+                    ))}
+                </Box>
+              ) : (
+                <Typography color="textSecondary">
+                  No messages received yet.
+                </Typography>
+              )}
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
 
       {/* Snackbar for notifications */}
       <Snackbar
@@ -648,12 +920,12 @@ const DustbinDetail: React.FC = () => {
         <Alert
           onClose={handleSnackbarClose}
           severity={snackbarSeverity}
-          sx={{ width: "100%" }}
+          sx={{ width: "100%", border: "none" }} // Remove border from Alert
         >
           {snackbarMessage}
         </Alert>
       </Snackbar>
-    </div>
+    </Box>
   );
 };
 
