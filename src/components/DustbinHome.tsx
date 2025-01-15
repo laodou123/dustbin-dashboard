@@ -1,30 +1,33 @@
-// DustbinHome.tsx
+// src/components/DustbinHome.tsx
+
 import React from "react";
 import {
   Grid,
   Typography,
   Container,
-  AppBar,
-  Toolbar,
   Box,
   CssBaseline,
   useTheme,
+  useMediaQuery,
 } from "@mui/material";
 import DustbinCard from "./DustbinCard";
 import generalwasteImage from "../images/generalwaste.jpg";
 import metalImage from "../images/metal.png";
 import paperImage from "../images/paper.png";
 import plasticImage from "../images/plastic.png";
+import glassImage from "../images/glass.png"; // Newly imported glass image
 import HomeIcon from "@mui/icons-material/Home";
 
 const DustbinHome: React.FC = () => {
   const theme = useTheme();
+  const isSmDown = useMediaQuery(theme.breakpoints.down("sm"));
 
   const bins = [
     { title: "Plastic", imageSrc: plasticImage },
     { title: "Paper", imageSrc: paperImage },
     { title: "Metal", imageSrc: metalImage },
     { title: "General Waste", imageSrc: generalwasteImage },
+    { title: "Glass", imageSrc: glassImage }, // Newly added glass bin
   ];
 
   return (

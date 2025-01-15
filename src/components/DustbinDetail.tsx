@@ -148,12 +148,13 @@ const DustbinDetail: React.FC = () => {
     []
   );
 
-  // Details for each bin type
+  // Details for each bin type (Added 'glass')
   const details: Record<string, string> = {
     plastic: "This is a plastic bin used for recycling plastic waste.",
     paper: "This bin is used for paper recycling.",
     metal: "Use this bin for metal waste recycling.",
     generalwaste: "This bin is for general waste.",
+    glass: "This bin is for glass waste recycling.", // Newly added bin type
   };
 
   // Handle actions (e.g., cover, position, lock)
