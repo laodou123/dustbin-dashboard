@@ -1,6 +1,6 @@
 // src/components/Sidebar.tsx
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState } from "react";
 import { NavLink } from "react-router-dom";
 import {
   FaTachometerAlt,
@@ -9,88 +9,14 @@ import {
   FaBars,
   FaTimes,
 } from "react-icons/fa";
-import {
-  Tooltip,
-  IconButton,
-  useTheme,
-  useMediaQuery,
-  Drawer,
-  List,
-  ListItem,
-  ListItemIcon,
-  ListItemText,
-  Divider,
-} from "@mui/material";
-import { styled } from "@mui/system";
-
-// Define the width for expanded and collapsed states
-const drawerWidthExpanded = 200;
-const drawerWidthCollapsed = 60;
-
-// Styled components using MUI's styled API
-const StyledDrawer = styled(Drawer)(({ theme }) => ({
-  "& .MuiDrawer-paper": {
-    width: drawerWidthExpanded,
-    transition: theme.transitions.create("width", {
-      easing: theme.transitions.easing.sharp,
-      duration: theme.transitions.duration.enteringScreen,
-    }),
-    overflowX: "hidden",
-    whiteSpace: "nowrap",
-    boxSizing: "border-box",
-    backgroundColor: theme.palette.primary.main,
-    color: theme.palette.common.white,
-  },
-}));
-
-const SidebarContainer = styled("div")(({ theme }) => ({
-  display: "flex",
-  height: "100vh",
-  position: "fixed",
-  top: 0,
-  left: 0,
-  zIndex: 1200, // Ensure it stays above other elements
-}));
-
-const ToggleButton = styled(IconButton)(({ theme }) => ({
-  color: theme.palette.common.white,
-}));
+import { Tooltip, IconButton, useTheme, useMediaQuery } from "@mui/material"; // Ensure @mui/material is installed
 
 const Sidebar: React.FC = () => {
+  const [isCollapsed, setIsCollapsed] = useState(false);
+
+  // Theme and responsive breakpoints
   const theme = useTheme();
   const isSmDown = useMediaQuery(theme.breakpoints.down("sm"));
-
-  const [isCollapsed, setIsCollapsed] = useState<boolean>(false);
-  const [isMobileOpen, setIsMobileOpen] = useState<boolean>(false);
-
-  const toggleSidebar = () => {
-    setIsCollapsed(!isCollapsed);
-  };
-
-  const toggleMobileSidebar = () => {
-    setIsMobileOpen(!isMobileOpen);
-  };
-
-  // Close sidebar on clicking outside (for desktop hover)
-  const drawerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        drawerRef.current &&
-        !drawerRef.current.contains(event.target as Node)
-      ) {
-        if (!isSmDown && !isCollapsed) {
-          setIsCollapsed(true);
-        }
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [isCollapsed, isSmDown]);
 
   // Menu items with icons
   const menuItems = [
@@ -99,173 +25,108 @@ const Sidebar: React.FC = () => {
     { name: "Settings", path: "/Setting", icon: <FaCog /> },
   ];
 
+  // Toggle sidebar collapse state
+  const toggleSidebar = () => {
+    setIsCollapsed(!isCollapsed);
+  };
+
   return (
-    <>
-      {/* Mobile Toggle Button */}
-      {isSmDown && (
-        <IconButton
-          onClick={toggleMobileSidebar}
-          sx={{
-            position: "fixed",
-            top: 16,
-            left: 16,
-            zIndex: 1300, // Above the drawer
-            color: theme.palette.primary.main,
-            backgroundColor: theme.palette.common.white,
-            "&:hover": {
-              backgroundColor: theme.palette.grey[200],
-            },
+    <div className="d-flex">
+      {/* Sidebar */}
+      <div
+        className={`d-flex flex-column position-fixed top-0 start-0 bg-primary text-white ${
+          isCollapsed ? "sidebar-collapsed" : "sidebar-expanded"
+        }`}
+        style={{
+          width: isCollapsed ? "60px" : "200px", // Reduced expanded width
+          height: "100vh",
+          transition: "width 0.3s ease",
+          overflowY: "auto",
+          zIndex: 1000,
+        }}
+      >
+        {/* Sidebar Header */}
+        <div
+          className="d-flex align-items-center justify-content-between p-3 border-bottom"
+          style={{
+            minHeight: "60px",
           }}
-          aria-label="open sidebar"
         >
-          <FaBars />
-        </IconButton>
+          {!isCollapsed && (
+            <h4 className="mb-0" style={{ fontWeight: "bold" }}>
+              SRB
+            </h4>
+          )}
+          <Tooltip title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}>
+            <IconButton
+              onClick={toggleSidebar}
+              className="text-white"
+              aria-label="toggle sidebar"
+            >
+              {isCollapsed ? <FaBars /> : <FaTimes />}
+            </IconButton>
+          </Tooltip>
+        </div>
+
+        {/* Navigation Menu */}
+        <nav className="nav flex-column mt-3">
+          {menuItems.map((item) => (
+            <NavLink
+              key={item.name}
+              to={item.path}
+              className={({ isActive }) =>
+                `nav-link text-white d-flex align-items-center p-2 ${
+                  isActive ? "bg-secondary" : ""
+                } sidebar-link`
+              }
+              style={{
+                justifyContent: isCollapsed ? "center" : "flex-start",
+                transition: "justify-content 0.3s ease",
+                fontSize: "1rem",
+              }}
+            >
+              <Tooltip
+                title={isCollapsed ? item.name : ""}
+                placement="right"
+                arrow
+                disableHoverListener={!isCollapsed}
+              >
+                <span className="me-2" style={{ fontSize: "1.2rem" }}>
+                  {item.icon}
+                </span>
+              </Tooltip>
+              {!isCollapsed && <span>{item.name}</span>}
+            </NavLink>
+          ))}
+        </nav>
+      </div>
+
+      {/* Overlay for Mobile View when Sidebar is Expanded */}
+      {isCollapsed === false && isSmDown && (
+        <div
+          className="position-fixed top-0 start-0 bg-dark"
+          style={{
+            width: "100vw",
+            height: "100vh",
+            opacity: 0.3,
+            zIndex: 999,
+          }}
+          onClick={toggleSidebar}
+        ></div>
       )}
-
-      <SidebarContainer ref={drawerRef}>
-        {/* Permanent Drawer for Desktop */}
-        {!isSmDown && (
-          <StyledDrawer
-            variant="permanent"
-            open={!isCollapsed}
-            PaperProps={{
-              style: {
-                width: isCollapsed ? drawerWidthCollapsed : drawerWidthExpanded,
-                transition: theme.transitions.create("width", {
-                  easing: theme.transitions.easing.sharp,
-                  duration: theme.transitions.duration.standard,
-                }),
-              },
-            }}
-          >
-            <List>
-              {/* Toggle Button */}
-              <ListItem
-                button
-                onClick={toggleSidebar}
-                sx={{
-                  display: "flex",
-                  justifyContent: isCollapsed ? "center" : "flex-end",
-                  padding: theme.spacing(1, 2),
-                }}
-              >
-                <ToggleButton aria-label="toggle sidebar">
-                  {isCollapsed ? <FaBars /> : <FaTimes />}
-                </ToggleButton>
-              </ListItem>
-              <Divider sx={{ backgroundColor: theme.palette.grey[700] }} />
-              {/* Menu Items */}
-              {menuItems.map((item) => (
-                <NavLink
-                  to={item.path}
-                  key={item.name}
-                  style={{ textDecoration: "none", color: "inherit" }}
-                >
-                  <Tooltip
-                    title={isCollapsed ? item.name : ""}
-                    placement="right"
-                    arrow
-                    disableHoverListener={!isCollapsed}
-                  >
-                    <ListItem button>
-                      <ListItemIcon
-                        sx={{
-                          minWidth: 0,
-                          mr: isCollapsed ? "auto" : 3,
-                          justifyContent: "center",
-                          color: theme.palette.common.white,
-                          fontSize: "1.2rem",
-                        }}
-                      >
-                        {item.icon}
-                      </ListItemIcon>
-                      {!isCollapsed && <ListItemText primary={item.name} />}
-                    </ListItem>
-                  </Tooltip>
-                </NavLink>
-              ))}
-            </List>
-          </StyledDrawer>
-        )}
-
-        {/* Temporary Drawer for Mobile */}
-        {isSmDown && (
-          <Drawer
-            variant="temporary"
-            open={isMobileOpen}
-            onClose={toggleMobileSidebar}
-            ModalProps={{
-              keepMounted: true, // Better open performance on mobile
-            }}
-            sx={{
-              "& .MuiDrawer-paper": {
-                width: drawerWidthExpanded,
-                backgroundColor: theme.palette.primary.main,
-                color: theme.palette.common.white,
-              },
-            }}
-          >
-            <List>
-              {/* Close Button */}
-              <ListItem
-                button
-                onClick={toggleMobileSidebar}
-                sx={{
-                  display: "flex",
-                  justifyContent: "flex-end",
-                  padding: theme.spacing(1, 2),
-                }}
-              >
-                <ToggleButton aria-label="close sidebar">
-                  <FaTimes />
-                </ToggleButton>
-              </ListItem>
-              <Divider sx={{ backgroundColor: theme.palette.grey[700] }} />
-              {/* Menu Items */}
-              {menuItems.map((item) => (
-                <NavLink
-                  to={item.path}
-                  key={item.name}
-                  style={{ textDecoration: "none", color: "inherit" }}
-                  onClick={toggleMobileSidebar} // Close sidebar on menu item click
-                >
-                  <ListItem button>
-                    <ListItemIcon
-                      sx={{
-                        minWidth: 0,
-                        mr: 3,
-                        justifyContent: "center",
-                        color: theme.palette.common.white,
-                        fontSize: "1.2rem",
-                      }}
-                    >
-                      {item.icon}
-                    </ListItemIcon>
-                    <ListItemText primary={item.name} />
-                  </ListItem>
-                </NavLink>
-              ))}
-            </List>
-          </Drawer>
-        )}
-      </SidebarContainer>
 
       {/* Main Content Area */}
       <div
+        className="flex-grow-1 p-4"
         style={{
-          marginLeft: !isSmDown
-            ? isCollapsed
-              ? `${drawerWidthCollapsed}px`
-              : `${drawerWidthExpanded}px`
-            : "0px",
+          marginLeft: isCollapsed ? "60px" : "200px",
           transition: "margin-left 0.3s ease",
-          padding: theme.spacing(3),
           width: "100%",
         }}
       >
         {/* Your main content goes here */}
       </div>
-    </>
+    </div>
   );
 };
 
