@@ -26,7 +26,7 @@ const DustbinHome: React.FC = () => {
     { title: "Plastic", imageSrc: plasticImage },
     { title: "Paper", imageSrc: paperImage },
     { title: "Metal", imageSrc: metalImage },
-    { title: "General Waste", imageSrc: generalwasteImage },
+    { title: "GeneralWaste", imageSrc: generalwasteImage },
     { title: "Glass", imageSrc: glassImage }, // Newly added glass bin
   ];
 
@@ -115,9 +115,13 @@ const DustbinHome: React.FC = () => {
         </Box>
 
         {/* Grid Layout for Dustbin Cards */}
-        <Grid container spacing={4}>
+        <Grid
+          container
+          spacing={4}
+          columns={{ xs: 1, sm: 2, md: 3, lg: 5 }} // Define columns for different breakpoints
+        >
           {bins.map((bin, index) => (
-            <Grid item xs={12} sm={6} md={3} key={index}>
+            <Grid item xs={1} sm={1} md={1} lg={1} key={index}>
               <DustbinCard title={bin.title} imageSrc={bin.imageSrc} />
             </Grid>
           ))}

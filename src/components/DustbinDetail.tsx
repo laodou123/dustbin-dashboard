@@ -125,11 +125,12 @@ const DustbinDetail: React.FC = () => {
   const [messageLog, setMessageLog] = useState<string[]>([]);
 
   // Construct MQTT topics based on binType
-  const commandTopic = binType
-    ? `srb/${binType.toLowerCase()}/eabc24b6-ca1c-4c94-86e1-2ebbc4952a78`
+  const binTypeParam = binType ? binType.toLowerCase() : "";
+  const commandTopic = binTypeParam
+    ? `srb/${binTypeParam}/eabc24b6-ca1c-4c94-86e1-2ebbc4952a78`
     : "";
-  const dataTopic = binType
-    ? `srb/${binType.toLowerCase()}/eabc24b6-ca1c-4c94-86e1-2ebbc4952a78`
+  const dataTopic = binTypeParam
+    ? `srb/${binTypeParam}/eabc24b6-ca1c-4c94-86e1-2ebbc4952a78`
     : "";
 
   // Define MQTT options using environment variables for security
@@ -159,7 +160,7 @@ const DustbinDetail: React.FC = () => {
 
   // Handle actions (e.g., cover, position, lock)
   const handleSwitchChange = (action: string) => {
-    if (clientRef.current && binType) {
+    if (clientRef.current && binTypeParam) {
       const message = { command: action };
       clientRef.current.publish(commandTopic, JSON.stringify(message));
       console.log(`Published command message: ${JSON.stringify(message)}`);
@@ -167,8 +168,8 @@ const DustbinDetail: React.FC = () => {
   };
 
   // Get bin details based on binType
-  const binDetail = binType
-    ? details[binType.toLowerCase()] || "No details available."
+  const binDetail = binTypeParam
+    ? details[binTypeParam] || "No details available."
     : "Dustbin type is not specified.";
 
   // Default states for switches
@@ -215,7 +216,7 @@ const DustbinDetail: React.FC = () => {
    * Firebase Data Fetching for Bin Status
    */
   useEffect(() => {
-    if (!binType) {
+    if (!binTypeParam) {
       console.warn("Bin type is not specified.");
       setError("Bin type is not specified.");
       setLoading(false);
@@ -223,7 +224,7 @@ const DustbinDetail: React.FC = () => {
     }
 
     // Construct the Firebase path based on binType
-    const binStatusPath = `${binType.toLowerCase()}Status`;
+    const binStatusPath = `${binTypeParam}Status`;
 
     // Reference to the bin status in Firebase
     const binRef = ref(database, binStatusPath);
@@ -233,40 +234,58 @@ const DustbinDetail: React.FC = () => {
       binRef,
       (snapshot) => {
         const data = snapshot.val();
+        console.log(`Fetched data for ${binStatusPath}:`, data); // Detailed log
 
         if (data) {
           const keys = Object.keys(data);
           const latestKey = keys[keys.length - 1];
-          const latestData = data[latestKey] as SensorData;
+          const latestData = data[latestKey] as Partial<SensorData> & {
+            command?: string;
+          };
 
-          // Validate the data structure
-          if (
-            typeof latestData.binCapacity === "number" &&
-            typeof latestData.cover === "string" &&
-            typeof latestData.lock === "string" &&
-            typeof latestData.timestamp === "string" && // Initially string in Firebase
-            typeof latestData.uid === "string" &&
-            typeof latestData.upDn === "string"
-          ) {
-            // Convert timestamp to number
-            const timestampNumber = new Date(latestData.timestamp).getTime();
+          console.log(
+            `Latest data for ${binStatusPath} (Key: ${latestKey}):`,
+            latestData
+          ); // Detailed log
 
-            setSensorData({
-              binCapacity: latestData.binCapacity,
-              cover: latestData.cover,
-              lock: latestData.lock,
-              timestamp: timestampNumber, // Assign number
-              uid: latestData.uid,
-              upDn: latestData.upDn,
-              weightInGrams: latestData.weightInGrams || "", // Initialize if not present
-            });
-            setLoading(false);
-          } else {
-            console.error("Invalid data structure:", latestData);
-            setError("Received data has an unexpected format.");
-            setLoading(false);
+          // Check if the message is a command
+          if (latestData.command) {
+            console.log(
+              "Received a command message. Ignoring sensor data update."
+            );
+            return; // Do not process command messages
           }
+
+          // Validate and assign fields with fallbacks
+          const validatedData: SensorData = {
+            binCapacity:
+              typeof latestData.binCapacity === "number"
+                ? latestData.binCapacity
+                : 0,
+            cover:
+              typeof latestData.cover === "string"
+                ? latestData.cover
+                : "unknown",
+            lock:
+              typeof latestData.lock === "string" ? latestData.lock : "unknown",
+            timestamp:
+              typeof latestData.timestamp === "number"
+                ? latestData.timestamp
+                : new Date().getTime(),
+            uid:
+              typeof latestData.uid === "string" ? latestData.uid : "unknown",
+            upDn:
+              typeof latestData.upDn === "string" ? latestData.upDn : "unknown",
+            weightInGrams:
+              typeof latestData.weightInGrams === "string"
+                ? latestData.weightInGrams
+                : "0",
+          };
+
+          setSensorData(validatedData);
+          setLoading(false);
         } else {
+          console.warn(`No data found at path: ${binStatusPath}`);
           setError(`No sensor data available for ${binStatusPath}.`);
           setLoading(false);
         }
@@ -282,13 +301,13 @@ const DustbinDetail: React.FC = () => {
     return () => {
       unsubscribe();
     };
-  }, [binType]);
+  }, [binTypeParam]);
 
   /**
    * Firebase Listener for Thrown Items
    */
   useEffect(() => {
-    if (!binType) {
+    if (!binTypeParam) {
       console.warn("Bin type is not specified.");
       return;
     }
@@ -306,7 +325,7 @@ const DustbinDetail: React.FC = () => {
         // Validate the presence of required fields
         if (material && weightInGrams) {
           // Check if the material matches the current binType
-          if (material.toLowerCase() === binType.toLowerCase()) {
+          if (material.toLowerCase() === binTypeParam.toLowerCase()) {
             // Update sensorData with the new weight without adjusting binCapacity
             setSensorData((prevData) => {
               if (prevData) {
@@ -336,7 +355,7 @@ const DustbinDetail: React.FC = () => {
     return () => {
       unsubscribe();
     };
-  }, [binType]);
+  }, [binTypeParam]);
 
   /**
    * Centralized Historical Data Update based on sensorData
@@ -370,7 +389,7 @@ const DustbinDetail: React.FC = () => {
    * MQTT Connection Setup with Message Filtering
    */
   useEffect(() => {
-    if (!binType) {
+    if (!binTypeParam) {
       console.warn("Bin type is not specified.");
       return;
     }
@@ -478,7 +497,7 @@ const DustbinDetail: React.FC = () => {
         });
       }
     };
-  }, [binType, options, dataTopic]);
+  }, [binTypeParam, options, dataTopic]);
 
   /**
    * Early Loading State for MQTT
@@ -486,6 +505,11 @@ const DustbinDetail: React.FC = () => {
   if (!isConnected && loading) {
     return <LoadingPage />; // Ensure LoadingPage shows a spinner or loading indicator
   }
+
+  /**
+   * Handle Switch State Persistence (Optional)
+   * If you want to persist the switch states across sessions, consider using localStorage.
+   */
 
   return (
     <Box
@@ -520,8 +544,11 @@ const DustbinDetail: React.FC = () => {
                 color="primary"
                 gutterBottom
               >
-                {binType
-                  ? `${binType.charAt(0).toUpperCase() + binType.slice(1)} Bin`
+                {binTypeParam
+                  ? `${
+                      binTypeParam.charAt(0).toUpperCase() +
+                      binTypeParam.slice(1)
+                    } Bin`
                   : "Error"}
               </Typography>
               <Typography
@@ -639,7 +666,7 @@ const DustbinDetail: React.FC = () => {
                     <Box>
                       <Typography variant="h6">Bin Capacity</Typography>
                       <Typography variant="body1">
-                        {sensorData?.binCapacity || "N/A"}
+                        {sensorData?.binCapacity || "N/A"}%
                       </Typography>
                     </Box>
                   </Box>
