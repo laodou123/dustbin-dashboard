@@ -39,7 +39,14 @@ import {
   FaSun,
 } from "react-icons/fa";
 import { database } from "../firebase"; // Adjust the path if necessary
-import { ref, onValue, off } from "firebase/database";
+import {
+  ref,
+  onValue,
+  query,
+  off,
+  orderByChild,
+  limitToLast,
+} from "firebase/database";
 
 // Register necessary Chart.js components
 ChartJS.register(
@@ -374,9 +381,11 @@ const Dashboard: React.FC = () => {
     const listeners: (() => void)[] = [];
 
     dustbinTypes.forEach((type, index) => {
-      const dustbinRef = ref(database, `/${type.key}/-OGStVeG9c4fuN8xTgfm`);
+      const dustbinReference = ref(database, type.key);
+      const dustbinQuery = query(dustbinReference, limitToLast(1));
+      //const dustbinRef = ref(database, `/${type.key}/-OGStVeG9c4fuN8xTgfm`);
       const listener = onValue(
-        dustbinRef,
+        dustbinQuery,
         (snapshot) => {
           const data = snapshot.val();
           if (data) {
@@ -415,7 +424,7 @@ const Dashboard: React.FC = () => {
         }
       );
 
-      listeners.push(() => off(dustbinRef, "value", listener));
+      listeners.push(() => off(dustbinReference, "value", listener));
     });
 
     // Cleanup listeners on unmount
