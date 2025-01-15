@@ -38,8 +38,6 @@ import {
   FaMoon,
   FaSun,
 } from "react-icons/fa";
-import { database } from "../firebase"; // Adjust the path if necessary
-import { ref, onValue, off } from "firebase/database";
 
 // Register necessary Chart.js components
 ChartJS.register(
@@ -83,6 +81,49 @@ const COLORS = {
 // Notification Icon Path
 const NOTIFICATION_ICON = "/path/to/icon.png"; // Update this path accordingly
 
+// Initial data (attempt to load from localStorage)
+const loadInitialData = (): Dustbin[] => {
+  const data = localStorage.getItem("dustbinData");
+  if (data) {
+    return JSON.parse(data);
+  }
+  // If no data in localStorage, return default data
+  return [
+    {
+      id: 1,
+      name: "Plastic",
+      fullness: 70,
+      lastUpdated: "2023-12-26 14:30",
+      notified: false,
+      history: [60, 65, 70],
+    },
+    {
+      id: 2,
+      name: "Metal",
+      fullness: 50,
+      lastUpdated: "2023-12-26 15:00",
+      notified: false,
+      history: [40, 45, 50],
+    },
+    {
+      id: 3,
+      name: "Paper",
+      fullness: 80,
+      lastUpdated: "2023-12-26 16:45",
+      notified: false,
+      history: [70, 75, 80],
+    },
+    {
+      id: 4,
+      name: "General Waste",
+      fullness: 30,
+      lastUpdated: "2023-12-26 17:15",
+      notified: false,
+      history: [20, 25, 30],
+    },
+  ];
+};
+
 // Function to export notifications as CSV
 const exportToCSV = (notifications: NotificationLog[]) => {
   const headers = ["Dustbin Name", "Message", "Timestamp"];
@@ -109,11 +150,12 @@ const exportToCSV = (notifications: NotificationLog[]) => {
 // DustbinCard Component
 interface DustbinCardProps {
   dustbin: Dustbin;
+  onFullnessChange: (id: number, newFullness: number) => void;
   onViewDetails: (dustbin: Dustbin) => void;
 }
 
 const DustbinCard: React.FC<DustbinCardProps> = React.memo(
-  ({ dustbin, onViewDetails }) => {
+  ({ dustbin, onFullnessChange, onViewDetails }) => {
     const chartData = useMemo(
       () => ({
         labels: ["Full", "Empty"],
@@ -133,6 +175,11 @@ const DustbinCard: React.FC<DustbinCardProps> = React.memo(
       }),
       [dustbin.fullness]
     );
+
+    const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const newFullness = parseInt(e.target.value, 10);
+      onFullnessChange(dustbin.id, newFullness);
+    };
 
     return (
       <Col
@@ -183,6 +230,24 @@ const DustbinCard: React.FC<DustbinCardProps> = React.memo(
               <p className="mt-1 text-center text-muted">
                 Last updated: {dustbin.lastUpdated}
               </p>
+              <div className="mb-2">
+                <label
+                  htmlFor={`fullness-slider-${dustbin.id}`}
+                  className="form-label sr-only"
+                >
+                  Adjust fullness for {dustbin.name}
+                </label>
+                <input
+                  id={`fullness-slider-${dustbin.id}`}
+                  type="range"
+                  min="0"
+                  max="100"
+                  value={dustbin.fullness}
+                  onChange={handleSliderChange}
+                  className="form-range"
+                  aria-label={`Fullness slider for ${dustbin.name}`}
+                />
+              </div>
             </div>
           </Card.Body>
         </Card>
@@ -333,7 +398,7 @@ const DetailedModal: React.FC<DetailedModalProps> = ({
 
 // Main Dashboard Component
 const Dashboard: React.FC = () => {
-  const [dustbinData, setDustbinData] = useState<Dustbin[]>([]);
+  const [dustbinData, setDustbinData] = useState<Dustbin[]>(loadInitialData);
   const [notificationError, setNotificationError] = useState<string | null>(
     null
   );
@@ -344,85 +409,11 @@ const Dashboard: React.FC = () => {
   const [filterThreshold, setFilterThreshold] = useState<number>(0);
   const [darkMode, setDarkMode] = useState<boolean>(false);
 
-  // Define dustbin types
-  const dustbinTypes = useMemo(
-    () => [
-      { key: "plasticStatus", name: "Plastic" },
-      { key: "metalStatus", name: "Metal" },
-      { key: "paperStatus", name: "Paper" },
-      { key: "glassStatus", name: "Glass" },
-      { key: "generalwasteStatus", name: "General Waste" },
-    ],
-    []
-  );
-
-  // Initialize dustbin data with empty or default values
+  // Save dustbin data and notifications to localStorage whenever they change
   useEffect(() => {
-    const initialDustbins: Dustbin[] = dustbinTypes.map((type, index) => ({
-      id: index + 1,
-      name: type.name,
-      fullness: 0,
-      lastUpdated: "",
-      notified: false,
-      history: [],
-    }));
-    setDustbinData(initialDustbins);
-  }, [dustbinTypes]);
-
-  // Set up Firebase listeners
-  useEffect(() => {
-    const listeners: (() => void)[] = [];
-
-    dustbinTypes.forEach((type, index) => {
-      const dustbinRef = ref(database, `/${type.key}/-OGStVeG9c4fuN8xTgfm`);
-      const listener = onValue(
-        dustbinRef,
-        (snapshot) => {
-          const data = snapshot.val();
-          if (data) {
-            const binCapacity = data.binCapacity;
-            const timestamp = data.timestamp;
-
-            // Handle binCapacity being -1 or invalid
-            const fullness =
-              binCapacity >= 0 && binCapacity <= 100 ? binCapacity : 0;
-
-            setDustbinData((prevData) => {
-              const updatedData = [...prevData];
-              const dustbin = { ...updatedData[index] };
-              dustbin.fullness = fullness;
-              dustbin.lastUpdated = timestamp;
-              dustbin.history = [
-                ...dustbin.history.slice(-9), // Keep last 9 entries
-                fullness,
-              ];
-              // Send notification if necessary
-              if (dustbin.fullness >= FULLNESS_THRESHOLD && !dustbin.notified) {
-                sendNotification(dustbin);
-                dustbin.notified = true;
-              }
-              // Reset notified if fullness drops below threshold
-              if (dustbin.fullness < FULLNESS_THRESHOLD) {
-                dustbin.notified = false;
-              }
-              updatedData[index] = dustbin;
-              return updatedData;
-            });
-          }
-        },
-        (error) => {
-          console.error(`Error fetching data for ${type.name}:`, error);
-        }
-      );
-
-      listeners.push(() => off(dustbinRef, "value", listener));
-    });
-
-    // Cleanup listeners on unmount
-    return () => {
-      listeners.forEach((unsubscribe) => unsubscribe());
-    };
-  }, [database, dustbinTypes]);
+    localStorage.setItem("dustbinData", JSON.stringify(dustbinData));
+    localStorage.setItem("notifications", JSON.stringify(notifications));
+  }, [dustbinData, notifications]);
 
   // Load notifications from localStorage on mount
   useEffect(() => {
@@ -431,11 +422,6 @@ const Dashboard: React.FC = () => {
       setNotifications(JSON.parse(storedNotifications));
     }
   }, []);
-
-  // Save notifications to localStorage whenever they change
-  useEffect(() => {
-    localStorage.setItem("notifications", JSON.stringify(notifications));
-  }, [notifications]);
 
   // Request permission for notifications on mount
   useEffect(() => {
@@ -481,6 +467,42 @@ const Dashboard: React.FC = () => {
     }
   }, []);
 
+  // Function to handle fullness change dynamically
+  const handleFullnessChange = useCallback(
+    (id: number, newFullness: number) => {
+      setDustbinData((prevData) => {
+        return prevData.map((bin) => {
+          if (bin.id === id) {
+            const updatedBin: Dustbin = {
+              ...bin,
+              fullness: newFullness,
+              lastUpdated: new Date()
+                .toISOString()
+                .slice(0, 19)
+                .replace("T", " "),
+              history: [...bin.history, newFullness].slice(-10), // Keep last 10 entries
+              notified:
+                newFullness >= FULLNESS_THRESHOLD ? bin.notified : false,
+            };
+
+            // Send notification if necessary
+            if (
+              updatedBin.fullness >= FULLNESS_THRESHOLD &&
+              !updatedBin.notified
+            ) {
+              sendNotification(updatedBin);
+              updatedBin.notified = true;
+            }
+
+            return updatedBin;
+          }
+          return bin;
+        });
+      });
+    },
+    [sendNotification]
+  );
+
   // Function to handle viewing details
   const handleViewDetails = useCallback((dustbin: Dustbin) => {
     setModalDustbin(dustbin);
@@ -491,7 +513,7 @@ const Dashboard: React.FC = () => {
   const statistics = useMemo(() => {
     const total = dustbinData.length;
     const average =
-      dustbinData.reduce((acc, bin) => acc + bin.fullness, 0) / total || 0;
+      dustbinData.reduce((acc, bin) => acc + bin.fullness, 0) / total;
     return { total, average };
   }, [dustbinData]);
 
@@ -611,6 +633,7 @@ const Dashboard: React.FC = () => {
               <DustbinCard
                 key={dustbin.id}
                 dustbin={dustbin}
+                onFullnessChange={handleFullnessChange}
                 onViewDetails={handleViewDetails}
               />
             ))
